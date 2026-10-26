@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实战项目 · 阶段一：单模块 CRUD</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="project-stage1">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 实战项目 / 阶段一</div>
+    <h1>实战项目 · 阶段一：单模块 CRUD</h1>
+
+    <div class="tags">
+      <span class="tag">难度：进阶</span>
+      <span class="tag">前置：第 1–3 章</span>
+      <span class="tag">目标：最小可用服务</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本阶段目标</h4>
+      <ul>
+        <li>用一个文件跑通「商品」资源的完整 CRUD（增删改查）；</li>
+        <li>用 Pydantic 模型做请求校验，用内存字典做临时存储；</li>
+        <li>建立「最小可用」的 API 服务，为后续扩展打地基。</li>
+      </ul>
+    </div>
+
+    <h2>项目概览</h2>
+    <p>我们要做一个「商品管理 API」。整个项目分四个阶段演进，这是第一步：<strong>单文件、内存存储、无数据库</strong>，专注把 CRUD 逻辑跑通。</p>
+
+    <div class="relation">
+      <strong>🔗 演进路线：</strong>阶段一（单文件内存 CRUD）→ 阶段二（多模块 + 数据库）→ 阶段三（认证 + 后台任务）→ 阶段四（企业级完善）。每个阶段都建立在前一阶段之上，你可以对比每个阶段的增量。
+    </div>
+
+    <h2>完整代码</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py · 阶段一</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from typing import Dict, List
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+app = FastAPI(title="商品管理 API", version="0.1.0")
+
+# 内存存储：id -> 商品
+fake_db: Dict[int, dict] = {}
+next_id = 1
+
+
+class ProductCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    price: float = Field(..., gt=0)
+    stock: int = Field(0, ge=0)
+
+
+class Product(ProductCreate):
+    id: int
+
+
+@app.get("/products/", response_model=List[Product])
+def list_products():
+    return list(fake_db.values())
+
+
+@app.post("/products/", response_model=Product, status_code=201)
+def create_product(product: ProductCreate):
+    global next_id
+    new = {"id": next_id, **product.model_dump()}
+    fake_db[next_id] = new
+    next_id += 1
+    return new
+
+
+@app.get("/products/{product_id}", response_model=Product)
+def get_product(product_id: int):
+    if product_id not in fake_db:
+        raise HTTPException(404, "商品不存在")
+    return fake_db[product_id]
+
+
+@app.put("/products/{product_id}", response_model=Product)
+def update_product(product_id: int, product: ProductCreate):
+    if product_id not in fake_db:
+        raise HTTPException(404, "商品不存在")
+    fake_db[product_id] = {"id": product_id, **product.model_dump()}
+    return fake_db[product_id]
+
+
+@app.delete("/products/{product_id}", status_code=204)
+def delete_product(product_id: int):
+    if product_id not in fake_db:
+        raise HTTPException(404, "商品不存在")
+    del fake_db[product_id]
+    return None</code></pre>
+    </div>
+
+    <h2>关键点解析</h2>
+    <ul>
+      <li><strong>模型继承</strong>：<code>Product</code> 继承 <code>ProductCreate</code> 并加 <code>id</code> 字段，避免重复定义；</li>
+      <li><strong>响应模型</strong>：每个接口都用 <code>response_model</code> 约束返回结构；</li>
+      <li><strong>状态码</strong>：创建返回 <code>201</code>，删除返回 <code>204</code>（无内容）；</li>
+      <li><strong>错误处理</strong>：不存在的资源返回 <code>404</code>。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 内存存储的局限</div>
+      <p>数据存在字典里，<strong>重启即丢失</strong>，且无法多进程共享。这只是阶段一的临时方案，阶段二会换成 SQLite 持久化。</p>
+    </div>
+
+    <h2>验证清单</h2>
+    <div class="exercise">
+      <div class="ex-title">验收测试</div>
+      <ol>
+        <li><code>POST /products/</code> 创建商品，返回 <code>201</code> 和带 <code>id</code> 的对象；</li>
+        <li><code>GET /products/</code> 能看到刚创建的商品；</li>
+        <li><code>GET /products/1</code> 返回商品；<code>GET /products/999</code> 返回 <code>404</code>；</li>
+        <li><code>PUT /products/1</code> 修改价格，<code>GET</code> 验证已更新；</li>
+        <li><code>DELETE /products/1</code> 返回 <code>204</code>，再 <code>GET</code> 返回 <code>404</code>。</li>
+      </ol>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 增量说明</div>
+      <p>阶段二会做三件事：① 把代码拆成 <code>models / schemas / routers / main</code> 多模块；② 用 SQLAlchemy + SQLite 替换内存字典；③ 用 <code>get_db</code> 依赖管理会话。届时你会看到「拆模块」带来的可维护性提升。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="../03-advanced/10-websocket.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 10 章 · WebSocket 与部署</div>
+      </a>
+      <a class="next" href="02-stage2.html">
+        <div class="dir">下一阶段</div>
+        <div class="lbl">阶段二 · 多模块 + 数据库 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

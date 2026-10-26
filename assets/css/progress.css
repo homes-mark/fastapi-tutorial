@@ -1,0 +1,63 @@
+/* ============================================================
+   进度条 / 完成状态样式（首页学习地图与章节进度）
+   ============================================================ */
+.progress-block { margin: 20px 0; }
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 13px; color: var(--text-muted); margin-bottom: 6px;
+}
+.progress-track {
+  height: 10px; background: var(--border); border-radius: 20px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+  border-radius: 20px;
+  transition: width .4s ease;
+}
+
+/* 阶段卡片 */
+.stage { margin: 28px 0; }
+.stage-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.stage-num {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px;
+}
+.stage-head h2 { margin: 0; border: none; padding: 0; font-size: 22px; }
+.stage-head .stage-meta { font-size: 12px; color: var(--text-muted); }
+
+.chapter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.chapter-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  transition: all .15s;
+  position: relative;
+}
+.chapter-card:hover { border-color: var(--accent); box-shadow: var(--shadow); transform: translateY(-2px); }
+.chapter-card .c-title { font-weight: 700; margin-bottom: 6px; }
+.chapter-card .c-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.chapter-card .c-tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.chapter-card.done::after {
+  content: "✓ 已完成";
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; color: #2e7d32; background: var(--tip-bg);
+  padding: 2px 8px; border-radius: 10px;
+}
+
+/* 难度徽章图例 */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 14px 0; font-size: 13px; }
+.legend .item { display: flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 14px; height: 14px; border-radius: 3px; }

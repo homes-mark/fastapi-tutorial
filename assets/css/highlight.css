@@ -1,0 +1,18 @@
+/* ============================================================
+   代码语法高亮配色（浅色主题）
+   由 highlight.js 输出 token 类名驱动，完全离线
+   ============================================================ */
+.hljs { color: #24292e; background: transparent; }
+.hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-meta { color: #d73a49; }
+.hljs-string, .hljs-regexp, .hljs-attr { color: #032f62; }
+.hljs-number, .hljs-literal, .hljs-variable { color: #005cc5; }
+.hljs-title, .hljs-title.function_, .hljs-title.class_ { color: #6f42c1; }
+.hljs-built_in, .hljs-type { color: #e36209; }
+.hljs-params { color: #24292e; }
+.hljs-decorator, .hljs-annotation { color: #005cc5; }
+.hljs-symbol { color: #032f62; }
+.hljs-name { color: #22863a; }
+.hljs-attribute { color: #6f42c1; }
+.hljs-operator { color: #24292e; }
+.hljs-punctuation { color: #24292e; }

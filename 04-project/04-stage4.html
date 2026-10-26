@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实战项目 · 阶段四：企业级完善</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="project-stage4">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 实战项目 / 阶段四</div>
+    <h1>实战项目 · 阶段四：企业级完善</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：阶段三 + 第 5、10 章</span>
+      <span class="tag">目标：可上线、可观测、可运维</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本阶段目标</h4>
+      <ul>
+        <li>引入配置管理、结构化日志、限流与健康检查；</li>
+        <li>用 Alembic 管理数据库迁移；</li>
+        <li>用 Docker 容器化，并搭建 CI 流水线。</li>
+      </ul>
+    </div>
+
+    <h2>1. 配置管理</h2>
+    <p>用 <code>pydantic-settings</code> 从环境变量读取配置，避免硬编码：</p>
+    <div class="code-block">
+      <div class="code-header"><span>config.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    database_url: str = "sqlite:///./app.db"
+    secret_key: str = "dev-secret"
+    access_token_expire_minutes: int = 30
+
+    class Config:
+        env_file = ".env"   # 自动读取 .env 文件
+
+
+settings = Settings()</code></pre>
+    </div>
+    <p>依赖版本：<code>pydantic-settings==2.2.1</code>。</p>
+
+    <h2>2. 限流中间件</h2>
+    <div class="code-block">
+      <div class="code-header"><span>限流示例</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+@app.get("/products/")
+@limiter.limit("10/minute")   # 每 IP 每分钟最多 10 次
+def list_products(request: Request):
+    ...</code></pre>
+    </div>
+
+    <h2>3. 健康检查与结构化日志</h2>
+    <div class="code-block">
+      <div class="code-header"><span>健康检查 + 日志</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("app")
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"{request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"status={response.status_code}")
+    return response</code></pre>
+    </div>
+
+    <h2>4. Docker 部署</h2>
+    <div class="code-block">
+      <div class="code-header"><span>Dockerfile</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app ./app
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>docker-compose.yml</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-yaml">services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/app
+    depends_on:
+      - db
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=pass</code></pre>
+    </div>
+
+    <h2>5. CI 流水线（GitHub Actions）</h2>
+    <div class="code-block">
+      <div class="code-header"><span>.github/workflows/ci.yml</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-yaml">name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: pytest</code></pre>
+    </div>
+
+    <h2>最终目录结构</h2>
+    <div class="code-block">
+      <div class="code-header"><span>完整结构</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">app/
+├── main.py
+├── config.py
+├── database.py
+├── models.py
+├── schemas.py
+├── security.py
+├── deps.py
+├── tasks.py
+├── routers/
+│   ├── products.py
+│   ├── users.py
+│   └── orders.py
+├── migrations/          # Alembic
+tests/
+Dockerfile
+docker-compose.yml
+requirements.txt
+.gitlab-ci.yml / .github/workflows/</code></pre>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">🎉 恭喜完成</div>
+      <p>你已走完从「单文件 Hello World」到「企业级 API 服务」的完整旅程。回顾这条演进路径，你会发现每一阶段都是前一阶段能力的自然延伸——这正是学习 FastAPI 的正确姿势：<strong>小步快跑，逐步扩展</strong>。</p>
+    </div>
+
+    <h2>回顾：四个阶段演进总结</h2>
+    <table>
+      <tr><th>阶段</th><th>核心增量</th><th>对应章节</th></tr>
+      <tr><td>一 · 单模块 CRUD</td><td>路由 + Pydantic 校验 + 内存存储</td><td>第 1–3 章</td></tr>
+      <tr><td>二 · 多模块 + 数据库</td><td>分层 + SQLAlchemy + 会话依赖</td><td>第 4、8 章</td></tr>
+      <tr><td>三 · 认证 + 后台任务</td><td>JWT + 权限 + BackgroundTasks</td><td>第 6、9 章</td></tr>
+      <tr><td>四 · 企业级完善</td><td>限流/日志/迁移/部署/CI</td><td>第 5、10 章</td></tr>
+    </table>
+
+    <div class="page-nav">
+      <a class="prev" href="03-stage3.html">
+        <div class="dir">上一阶段</div>
+        <div class="lbl">← 阶段三 · 认证 + 后台任务</div>
+      </a>
+      <a class="next" href="../index.html">
+        <div class="dir">返回</div>
+        <div class="lbl">学习路径总览 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

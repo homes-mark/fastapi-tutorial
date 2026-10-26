@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FastAPI 完整学习教程 · 学习路径总览</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/highlight.css">
+<link rel="stylesheet" href="assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="index">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <!-- 侧边栏 -->
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <!-- 主内容 -->
+  <main class="main full">
+    <div class="breadcrumb">FastAPI 学习教程 / 学习路径总览</div>
+    <h1>FastAPI 完整学习教程</h1>
+    <p style="font-size:17px;color:var(--text-muted)">从零基础到企业级 API 服务，一套系统、可动手、完全离线的学习路线。</p>
+
+    <div class="tags">
+      <span class="tag">FastAPI ≥ 0.110</span>
+      <span class="tag">Python ≥ 3.8（推荐 3.11+）</span>
+      <span class="tag">14 章 + 4 阶段实战</span>
+      <span class="tag">完全离线</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 学完本教程你将能够</h4>
+      <ul>
+        <li>独立搭建并运行一个 FastAPI 服务，理解请求从进入到响应的完整链路；</li>
+        <li>用 Pydantic 模型做请求体校验与数据建模，写出健壮的 API；</li>
+        <li>掌握依赖注入、中间件、后台任务、异步编程等进阶能力；</li>
+        <li>集成数据库、实现身份认证与授权、支持 WebSocket 实时通信；</li>
+        <li>把一个单文件脚本逐步演进成可部署的企业级 API 服务。</li>
+      </ul>
+    </div>
+
+    <h2>学习路径总览</h2>
+    <p>教程分为 <strong>四个阶段</strong>，难度逐级递进。每个章节都标注了难度等级与前置知识，建议按顺序学习；有经验的读者也可以直接跳到感兴趣的章节。</p>
+
+    <div class="progress-block">
+      <div class="progress-label">
+        <span>整体学习进度</span>
+        <span id="global-progress-label">0 / 14 章</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="global-progress-fill"></div></div>
+    </div>
+
+    <div class="legend">
+      <span class="item"><span class="swatch" style="background:#66bb6a"></span> 入门 · 无需基础</span>
+      <span class="item"><span class="swatch" style="background:#f0a500"></span> 进阶 · 需掌握入门内容</span>
+      <span class="item"><span class="swatch" style="background:#ec4899"></span> 高级 · 需掌握进阶内容</span>
+    </div>
+
+    <!-- 阶段一 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-num">1</span>
+        <div>
+          <h2>入门 · 建立基本认知</h2>
+          <span class="stage-meta">前置：会写基础 Python 即可</span>
+        </div>
+      </div>
+      <div class="chapter-grid">
+        <a class="chapter-card" data-page="01-intro" href="01-basics/01-intro.html">
+          <div class="c-title">第 1 章 · FastAPI 简介与安装</div>
+          <div class="c-desc">什么是 FastAPI？它为什么快？环境搭建与第一个 Hello World。</div>
+          <div class="c-tags"><span class="lvl l1">入门</span></div>
+        </a>
+        <a class="chapter-card" data-page="02-path-request" href="01-basics/02-path-request.html">
+          <div class="c-title">第 2 章 · 路径与请求处理</div>
+          <div class="c-desc">路径参数、查询参数、请求方法，路由声明与匹配规则。</div>
+          <div class="c-tags"><span class="lvl l1">入门</span></div>
+        </a>
+        <a class="chapter-card" data-page="03-request-body" href="01-basics/03-request-body.html">
+          <div class="c-title">第 3 章 · 请求体与 Pydantic</div>
+          <div class="c-desc">用 Pydantic 模型声明请求体，自动校验、类型转换与文档生成。</div>
+          <div class="c-tags"><span class="lvl l1">入门</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 阶段二 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-num">2</span>
+        <div>
+          <h2>进阶 · 掌握核心机制</h2>
+          <span class="stage-meta">前置：完成入门三章</span>
+        </div>
+      </div>
+      <div class="chapter-grid">
+        <a class="chapter-card" data-page="04-dependency" href="02-intermediate/04-dependency.html">
+          <div class="c-title">第 4 章 · 依赖注入</div>
+          <div class="c-desc">FastAPI 的核心设计：用依赖复用逻辑、共享资源、控制生命周期。</div>
+          <div class="c-tags"><span class="lvl l2">进阶</span></div>
+        </a>
+        <a class="chapter-card" data-page="05-middleware" href="02-intermediate/05-middleware.html">
+          <div class="c-title">第 5 章 · 中间件</div>
+          <div class="c-desc">在请求进入路由前/后插入全局逻辑：日志、跨域、性能统计。</div>
+          <div class="c-tags"><span class="lvl l2">进阶</span></div>
+        </a>
+        <a class="chapter-card" data-page="06-background" href="02-intermediate/06-background.html">
+          <div class="c-title">第 6 章 · 后台任务</div>
+          <div class="c-desc">响应后继续执行的耗时操作：发邮件、写日志、异步通知。</div>
+          <div class="c-tags"><span class="lvl l2">进阶</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 阶段三 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-num">3</span>
+        <div>
+          <h2>高级 · 构建生产级能力</h2>
+          <span class="stage-meta">前置：完成进阶三章</span>
+        </div>
+      </div>
+      <div class="chapter-grid">
+        <a class="chapter-card" data-page="07-async" href="03-advanced/07-async.html">
+          <div class="c-title">第 7 章 · 异步编程 async/await</div>
+          <div class="c-desc">理解事件循环，正确使用 async 路由与并发请求处理。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+        <a class="chapter-card" data-page="08-database" href="03-advanced/08-database.html">
+          <div class="c-title">第 8 章 · 数据库集成</div>
+          <div class="c-desc">SQLAlchemy 建模、会话管理、迁移，与依赖注入的配合。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+        <a class="chapter-card" data-page="09-auth" href="03-advanced/09-auth.html">
+          <div class="c-title">第 9 章 · 身份认证与授权</div>
+          <div class="c-desc">JWT、OAuth2 密码流、密码哈希、权限控制。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+        <a class="chapter-card" data-page="10-websocket" href="03-advanced/10-websocket.html">
+          <div class="c-title">第 10 章 · WebSocket 与部署</div>
+          <div class="c-desc">实时双向通信，以及用 Uvicorn/Gunicorn/Docker 上线。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 阶段四 -->
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-num">4</span>
+        <div>
+          <h2>实战项目 · 从脚本到企业级</h2>
+          <span class="stage-meta">前置：完成前三阶段全部章节</span>
+        </div>
+      </div>
+      <p>四个阶段层层递进，把同一个项目从「单文件 CRUD」逐步扩展成「多模块 + 数据库 + 认证 + 后台任务 + 可观测性」的企业级 API 服务。</p>
+      <div class="chapter-grid">
+        <a class="chapter-card" data-page="project-stage1" href="04-project/01-stage1.html">
+          <div class="c-title">阶段一 · 单模块 CRUD</div>
+          <div class="c-desc">一个文件跑通「商品」资源的增删改查，建立最小可用服务。</div>
+          <div class="c-tags"><span class="lvl l2">进阶</span></div>
+        </a>
+        <a class="chapter-card" data-page="project-stage2" href="04-project/02-stage2.html">
+          <div class="c-title">阶段二 · 多模块 + 数据库</div>
+          <div class="c-desc">拆分路由/模型/服务层，接入 SQLAlchemy + SQLite 持久化。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+        <a class="chapter-card" data-page="project-stage3" href="04-project/03-stage3.html">
+          <div class="c-title">阶段三 · 认证 + 后台任务</div>
+          <div class="c-desc">JWT 登录、权限控制、下单后异步发送通知邮件。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+        <a class="chapter-card" data-page="project-stage4" href="04-project/04-stage4.html">
+          <div class="c-title">阶段四 · 企业级完善</div>
+          <div class="c-desc">限流、日志、健康检查、Docker 部署与 CI 流水线。</div>
+          <div class="c-tags"><span class="lvl l3">高级</span></div>
+        </a>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 使用建议</div>
+      <p>每章末尾都有「动手练习」和「预期输出」，建议边读边敲。页面右下角的按钮可以把章节标记为「已完成」，进度会自动保存在你的浏览器里（localStorage），下次打开依然保留。</p>
+    </div>
+
+    <div class="page-nav">
+      <span></span>
+      <a class="next" href="01-basics/01-intro.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 1 章 · FastAPI 简介与安装 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="assets/js/highlight.js"></script>
+<script src="assets/js/nav.js"></script>
+<script src="assets/js/progress.js"></script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 1 章 · FastAPI 简介与安装</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="01-intro">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 入门 / 第 1 章</div>
+    <h1>第 1 章 · FastAPI 简介与安装</h1>
+
+    <div class="tags">
+      <span class="tag">难度：入门</span>
+      <span class="tag">前置：会写基础 Python</span>
+      <span class="tag">预计：30 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解 FastAPI 是什么、解决什么问题、为什么「快」；</li>
+        <li>独立完成环境搭建，安装 FastAPI 与 Uvicorn；</li>
+        <li>写出并运行第一个 Hello World 应用；</li>
+        <li>认识自动生成的交互式 API 文档（Swagger / ReDoc）。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>会写基础 Python：函数、变量、<code>if/for</code>、装饰器（了解即可）。无需 Web 框架经验。</p>
+    </div>
+
+    <h2>1.1 FastAPI 是什么</h2>
+    <p>FastAPI 是一个现代、高性能的 Python Web 框架，用于构建 API。它基于两大支柱：</p>
+    <ul>
+      <li><strong>Starlette</strong> —— 底层的 ASGI 框架，负责 HTTP 请求、路由、WebSocket、中间件等网络细节；</li>
+      <li><strong>Pydantic</strong> —— 数据校验与序列化库，负责把请求/响应数据转换成类型安全的 Python 对象。</li>
+    </ul>
+    <p>FastAPI 在这两者之上，用 Python 的<strong>类型注解（type hints）</strong>作为声明式接口，让你写很少的代码就能获得：</p>
+    <ul>
+      <li><strong>自动数据校验</strong>：请求体字段类型、必填性、约束，全自动检查；</li>
+      <li><strong>自动文档</strong>：无需手写，自动生成 OpenAPI 规范的交互式文档；</li>
+      <li><strong>编辑器补全</strong>：因为参数有类型，IDE 能给出精准的补全和错误提示；</li>
+      <li><strong>高性能</strong>：基于 ASGI 异步，性能可媲美 Node.js 和 Go。</li>
+    </ul>
+
+    <div class="callout info">
+      <div class="callout-title">📖 为什么「快」？</div>
+      <p>FastAPI 的「快」有两层：一是<strong>开发快</strong>——类型注解 + 自动文档省去大量样板代码；二是<strong>运行快</strong>——基于 ASGI 的异步事件循环，在 I/O 密集场景下吞吐远高于传统 WSGI 框架（如 Flask、Django）。</p>
+    </div>
+
+    <h2>1.2 安装环境</h2>
+    <p>推荐使用虚拟环境，避免污染全局 Python。假设已安装 Python 3.8+（本教程使用 3.11）。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>bash</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash"># 创建虚拟环境
+python -m venv venv
+
+# 激活（Windows）
+venv\Scripts\activate
+# 激活（macOS / Linux）
+source venv/bin/activate
+
+# 安装 FastAPI 与 Uvicorn（ASGI 服务器）
+pip install "fastapi==0.110.0" "uvicorn[standard]==0.29.0"</code></pre>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 依赖版本说明</div>
+      <p>本教程统一使用 <code>fastapi==0.110.0</code>、<code>uvicorn[standard]==0.29.0</code>、<code>pydantic==2.6.4</code>。后续章节涉及数据库时还会安装 <code>sqlalchemy</code>、<code>pydantic-settings</code> 等，会单独标注版本。<code>uvicorn[standard]</code> 带 <code>uvloop</code>、<code>httptools</code> 等性能组件。</p>
+    </div>
+
+    <h2>1.3 第一个应用：Hello World</h2>
+    <p>新建 <code>main.py</code>：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI(title="我的第一个 FastAPI 应用", version="0.1.0")
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello, FastAPI!"}</code></pre>
+    </div>
+
+    <p>逐行理解：</p>
+    <ul>
+      <li><code>app = FastAPI(...)</code>：创建应用实例，是核心对象；</li>
+      <li><code>@app.get("/")</code>：<strong>路径操作装饰器</strong>，声明「对根路径的 GET 请求」走这个函数；</li>
+      <li><code>read_root()</code>：<strong>路径操作函数</strong>，返回值会被自动序列化为 JSON。</li>
+    </ul>
+
+    <p>启动服务：</p>
+    <div class="code-block">
+      <div class="code-header"><span>bash</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">uvicorn main:app --reload</code></pre>
+    </div>
+
+    <p>访问 <code>http://127.0.0.1:8000</code>，会看到 <code>{"message":"Hello, FastAPI!"}</code>。<code>--reload</code> 表示代码改动后自动重启，仅用于开发环境。</p>
+
+    <h2>1.4 自动生成的 API 文档</h2>
+    <p>FastAPI 最惊艳的特性之一——无需任何额外配置，访问以下地址即可看到交互式文档：</p>
+    <ul>
+      <li><strong>Swagger UI</strong>：<code>http://127.0.0.1:8000/docs</code> —— 可视化、可在线调试；</li>
+      <li><strong>ReDoc</strong>：<code>http://127.0.0.1:8000/redoc</code> —— 更适合阅读的文档样式；</li>
+      <li><strong>OpenAPI JSON</strong>：<code>http://127.0.0.1:8000/openapi.json</code> —— 机器可读的接口规范。</li>
+    </ul>
+    <p>这些文档是<strong>从你的类型注解自动推导</strong>出来的，这也是 FastAPI 核心设计理念「声明即文档」的体现。后续章节你会看到，写一个带 Pydantic 模型的路由，文档里立刻就有字段说明和示例。</p>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>本章的 <code>@app.get</code> 装饰器和 ASGI 服务器（Uvicorn）是后续一切的地基——第 2 章会展开路径与请求处理的细节；第 7 章会深入 ASGI 背后的异步事件循环。
+    </div>
+
+    <h2>1.5 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 自定义路由<span class="ex-level">★ 简单</span></div>
+      <p>在 <code>main.py</code> 中新增一个 <code>GET /ping</code> 路由，返回 <code>{"status": "ok"}</code>，并用浏览器访问验证。</p>
+      <div class="expected"><strong>预期输出：</strong>访问 <code>/ping</code> 返回 <code>{"status":"ok"}</code>；访问 <code>/docs</code> 能看到新增的路由。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 修改应用元信息<span class="ex-level">★★ 中等</span></div>
+      <p>给 <code>FastAPI()</code> 传入 <code>title</code>、<code>description</code>、<code>version</code> 参数，观察 <code>/docs</code> 页面的标题和说明变化。</p>
+      <div class="expected"><strong>验证方法：</strong>打开 <code>/docs</code>，页面顶部应显示你设置的应用名和描述。</div>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 常见误区</div>
+      <p>「<code>uvicorn main:app</code> 里的 <code>main</code> 是文件名，<code>app</code> 是变量名」——如果你的文件不叫 <code>main.py</code> 或变量不叫 <code>app</code>，启动命令要相应改。很多初学者启动失败都卡在这里。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="../index.html">
+        <div class="dir">上一页</div>
+        <div class="lbl">← 学习路径总览</div>
+      </a>
+      <a class="next" href="02-path-request.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 2 章 · 路径与请求处理 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

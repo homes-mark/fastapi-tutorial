@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实战项目 · 阶段三：认证 + 后台任务</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="project-stage3">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 实战项目 / 阶段三</div>
+    <h1>实战项目 · 阶段三：认证 + 后台任务</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：阶段二 + 第 6、9 章</span>
+      <span class="tag">目标：用户体系 + 异步通知</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本阶段目标</h4>
+      <ul>
+        <li>新增 <code>users</code> 模块：注册、密码哈希、JWT 登录；</li>
+        <li>用 <code>get_current_user</code> 依赖保护商品接口（需登录才能增删改）；</li>
+        <li>引入「订单」概念，下单后用后台任务异步发送通知邮件。</li>
+      </ul>
+    </div>
+
+    <h2>新增目录结构</h2>
+    <div class="code-block">
+      <div class="code-header"><span>增量结构</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">app/
+├── security.py       # 密码哈希 + JWT 签发/解码
+├── routers/
+│   ├── products.py   # 加上 get_current_user 依赖
+│   ├── users.py      # 注册 / 登录
+│   └── orders.py     # 下单 + 后台任务
+└── tasks.py          # 后台任务函数（发邮件等）</code></pre>
+    </div>
+
+    <h2>安全模块</h2>
+    <div class="code-block">
+      <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from datetime import datetime, timedelta
+from passlib.context import CryptContext
+from jose import jwt
+
+SECRET_KEY = "CHANGE_ME_IN_PRODUCTION"
+ALGORITHM = "HS256"
+EXPIRE_MINUTES = 30
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(p): return pwd_context.hash(p)
+def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
+
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)</code></pre>
+    </div>
+
+    <h2>认证依赖</h2>
+    <div class="code-block">
+      <div class="code-header"><span>deps.py（新增）</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+from sqlalchemy.orm import Session
+import models
+from security import SECRET_KEY, ALGORITHM
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exc = HTTPException(401, "无效或过期的令牌")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise credentials_exc
+    except JWTError:
+        raise credentials_exc
+    user = db.get(models.UserDB, int(user_id))
+    if user is None:
+        raise credentials_exc
+    return user</code></pre>
+    </div>
+
+    <h2>后台任务：下单发通知</h2>
+    <div class="code-block">
+      <div class="code-header"><span>routers/orders.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import APIRouter, Depends, BackgroundTasks
+import tasks
+from deps import get_current_user
+
+router = APIRouter(prefix="/orders", tags=["orders"])
+
+
+@router.post("/")
+def create_order(
+    background_tasks: BackgroundTasks,
+    user=Depends(get_current_user),
+):
+    # 省略订单落库逻辑
+    background_tasks.add_task(tasks.send_order_notification, user.email)
+    return {"message": "订单已创建，通知邮件稍后发送"}</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>tasks.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">def send_order_notification(email: str):
+    # 实际中这里是 SMTP 发邮件；这里打印模拟
+    print(f"[后台任务] 向 {email} 发送下单通知")</code></pre>
+    </div>
+
+    <h2>关键点解析</h2>
+    <ul>
+      <li><strong>受保护路由</strong>：商品接口加 <code>Depends(get_current_user)</code>，未登录返回 <code>401</code>；</li>
+      <li><strong>OAuth2 密码流</strong>：<code>/docs</code> 里点 Authorize 填用户名密码即可测试；</li>
+      <li><strong>后台任务</strong>：下单响应先返回，发邮件在后台执行（第 6 章落地）；</li>
+      <li><strong>依赖链</strong>：<code>get_current_user</code> 同时依赖 <code>oauth2_scheme</code> 和 <code>get_db</code>，展示了依赖嵌套。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 生产注意</div>
+      <p><code>SECRET_KEY</code> 必须走环境变量，绝不能硬编码；<code>BackgroundTasks</code> 适合轻量通知，若邮件量大、需重试，应切换到 Celery + Redis。这些在阶段四会进一步完善。</p>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">验收测试</div>
+      <ol>
+        <li>注册用户 → 登录换取 token；</li>
+        <li>不带 token 调 <code>POST /products/</code> 返回 <code>401</code>；</li>
+        <li>带 token 再调，成功 <code>201</code>；</li>
+        <li>下单后，终端先看到响应、随后打印后台发送日志。</li>
+      </ol>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 增量说明</div>
+      <p>阶段四做最后的企业级收尾：限流、结构化日志、健康检查、配置管理、Docker 部署与 CI 流水线，让项目真正可上线。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="02-stage2.html">
+        <div class="dir">上一阶段</div>
+        <div class="lbl">← 阶段二 · 多模块 + 数据库</div>
+      </a>
+      <a class="next" href="04-stage4.html">
+        <div class="dir">下一阶段</div>
+        <div class="lbl">阶段四 · 企业级完善 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

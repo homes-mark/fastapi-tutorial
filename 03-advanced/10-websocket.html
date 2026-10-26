@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 10 章 · WebSocket 与部署</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="10-websocket">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 高级 / 第 10 章</div>
+    <h1>第 10 章 · WebSocket 与部署</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：第 7 章</span>
+      <span class="tag">预计：60 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解 WebSocket 与 HTTP 的区别及适用场景；</li>
+        <li>掌握 FastAPI 的 <code>WebSocket</code> 端点和消息收发；</li>
+        <li>了解用 <code>ConnectionManager</code> 管理多连接与广播；</li>
+        <li>掌握生产部署：Uvicorn / Gunicorn / Docker / 反向代理。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 7 章异步编程。了解 HTTP 请求/响应模型。</p>
+    </div>
+
+    <h2>10.1 WebSocket 是什么</h2>
+    <p>HTTP 是「一问一答」的无状态协议，客户端不请求、服务器就无法主动推送。WebSocket 则在客户端和服务器之间建立<strong>持久、双向</strong>的长连接，双方可随时互发消息，适合聊天、实时通知、协作编辑等场景。</p>
+
+    <h2>10.2 基本端点</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+app = FastAPI()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()                 # 接受连接
+    try:
+        while True:
+            data = await websocket.receive_text()   # 接收消息
+            await websocket.send_text(f"收到：{data}")  # 回显
+    except WebSocketDisconnect:
+        print("客户端断开连接")</code></pre>
+    </div>
+    <ul>
+      <li><code>@app.websocket</code>：声明 WebSocket 端点；</li>
+      <li><code>accept()</code>：必须先接受连接，否则无法通信；</li>
+      <li><code>receive_text()</code> / <code>send_text()</code>：收发文本消息；</li>
+      <li>客户端断开会抛 <code>WebSocketDisconnect</code>，需要捕获。</li>
+    </ul>
+
+    <h2>10.3 多连接管理与广播</h2>
+    <p>真实场景（如聊天室）需要跟踪所有连接并向它们广播：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from typing import List
+
+class ConnectionManager:
+    def __init__(self):
+        self.active: List[WebSocket] = []
+
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket):
+        self.active.remove(ws)
+
+    async def broadcast(self, message: str):
+        for ws in self.active:
+            await ws.send_text(message)
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws/chat")
+async def chat(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            msg = await websocket.receive_text()
+            await manager.broadcast(f"广播：{msg}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)</code></pre>
+    </div>
+    <p>注意：这里的 <code>ConnectionManager</code> 是<strong>单进程内存</strong>管理，多进程/多实例部署时需要引入 Redis Pub/Sub 等跨进程方案。</p>
+
+    <h2>10.4 生产部署</h2>
+    <p>开发用 <code>uvicorn --reload</code>，生产要更稳健：</p>
+    <div class="code-block">
+      <div class="code-header"><span>bash</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash"># 方案一：单进程 Uvicorn
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# 方案二：Gunicorn 管理多进程 + Uvicorn worker
+pip install "gunicorn==21.2.0"
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>Dockerfile</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 部署要点</div>
+      <p>生产环境通常还要在前面加<strong>反向代理</strong>（Nginx / Traefik）做 TLS 终止、负载均衡、静态文件。WebSocket 在反向代理下要正确配置 <code>Upgrade</code> 头转发，否则连接会失败。</p>
+    </div>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>本章是整条学习链的「终点」——WebSocket 依赖第 7 章的异步，部署则是把前面所有章节的成果真正跑起来。实战项目阶段四会补齐限流、日志、健康检查、CI/CD 等企业级细节。
+    </div>
+
+    <h2>10.5 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 回显服务<span class="ex-level">★ 简单</span></div>
+      <p>实现 10.2 的回显 WebSocket，用浏览器控制台或 <code>websocat</code> 连接测试。</p>
+      <div class="expected"><strong>验证方法：</strong>发送 <code>hello</code>，收到 <code>收到：hello</code>。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 简易聊天室<span class="ex-level">★★ 中等</span></div>
+      <p>实现 10.3 的 <code>ConnectionManager</code>，开两个客户端连接，验证广播。</p>
+      <div class="expected"><strong>验证方法：</strong>一个客户端发消息，两个客户端都能收到广播。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 多 worker 部署<span class="ex-level">★★★ 较难</span></div>
+      <p>用 <code>--workers 2</code> 启动 Uvicorn，观察内存 <code>ConnectionManager</code> 广播在多进程下是否失效。</p>
+      <div class="expected"><strong>验证方法：</strong>两个连接若落到不同 worker，广播可能只送达其中一个——体会「单进程内存状态」的局限。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>WebSocket 适合「低频长连接、实时推送」；高频消息或需要可靠投递的场景，考虑消息队列（Redis、RabbitMQ）。多实例部署时，连接状态要用 Redis 等共享存储，不能依赖进程内存。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="09-auth.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 9 章 · 认证与授权</div>
+      </a>
+      <a class="next" href="../04-project/01-stage1.html">
+        <div class="dir">下一部分</div>
+        <div class="lbl">实战项目 · 阶段一 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

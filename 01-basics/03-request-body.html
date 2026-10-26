@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 3 章 · 请求体与 Pydantic</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="03-request-body">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 入门 / 第 3 章</div>
+    <h1>第 3 章 · 请求体与 Pydantic</h1>
+
+    <div class="tags">
+      <span class="tag">难度：入门</span>
+      <span class="tag">前置：第 1、2 章</span>
+      <span class="tag">预计：60 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解 Pydantic 模型的核心作用：校验、转换、序列化；</li>
+        <li>掌握声明请求体的方法，以及嵌套模型、可选字段、默认值；</li>
+        <li>学会用 <code>Field</code> 添加字段级约束和示例；</li>
+        <li>理解请求体校验失败时返回的 422 错误结构。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 1、2 章：路径/查询参数。了解 Python 类的基本写法（<code>class</code>、继承）。</p>
+    </div>
+
+    <h2>3.1 认识 Pydantic 模型</h2>
+    <p>Pydantic 模型是一个继承自 <code>BaseModel</code> 的类，用类型注解声明字段：</p>
+    <div class="code-block">
+      <div class="code-header"><span>models.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    price: float
+    is_offer: bool = False  # 有默认值 → 可选字段</code></pre>
+    </div>
+    <p>这个模型做了三件事：</p>
+    <ul>
+      <li><strong>校验（Validation）</strong>：传入的数据类型必须匹配，否则报错；</li>
+      <li><strong>转换（Coercion）</strong>：比如把字符串 <code>"3.5"</code> 自动转成 <code>float</code>；</li>
+      <li><strong>序列化（Serialization）</strong>：把对象转成 dict / JSON。</li>
+    </ul>
+
+    <h2>3.2 在路由中使用请求体</h2>
+    <p>只要把 Pydantic 模型作为路由函数的参数类型，FastAPI 就会自动从请求体中解析 JSON 并校验：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+
+
+class Item(BaseModel):
+    name: str
+    price: float
+    is_offer: bool = False
+
+
+@app.post("/items/")
+def create_item(item: Item):
+    # item 已经是校验后的 Item 对象
+    return {"name": item.name, "price": item.price, "is_offer": item.is_offer}</code></pre>
+    </div>
+    <p>用 curl 测试：</p>
+    <div class="code-block">
+      <div class="code-header"><span>bash</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">curl -X POST http://127.0.0.1:8000/items/ \
+  -H "Content-Type: application/json" \
+  -d '{"name":"键盘","price":299.0}'</code></pre>
+    </div>
+    <p>返回 <code>{"name":"键盘","price":299.0,"is_offer":false}</code>——注意 <code>is_offer</code> 没传，用了默认值 <code>false</code>。</p>
+
+    <div class="callout danger">
+      <div class="callout-title">⚠️ 校验失败会发生什么</div>
+      <p>如果传 <code>{"name":123,"price":"abc"}</code>，FastAPI 会返回 <strong>422 Unprocessable Entity</strong>，响应体结构如下：</p>
+      <pre><code class="language-json">{
+  "detail": [
+    {
+      "loc": ["body", "price"],
+      "msg": "Input should be a valid number...",
+      "type": "float_parsing"
+    }
+  ]
+}</code></pre>
+      <p><code>loc</code> 指出了出错字段的位置（<code>body.price</code>），这对前端联调非常有价值。</p>
+    </div>
+
+    <h2>3.3 嵌套模型与复杂结构</h2>
+    <p>模型可以嵌套、组合，构建复杂的数据结构：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from typing import List, Optional
+from pydantic import BaseModel
+
+
+class Address(BaseModel):
+    city: str
+    street: str
+
+
+class User(BaseModel):
+    name: str
+    age: int
+    tags: List[str] = []            # 字符串列表，默认空列表
+    address: Optional[Address] = None  # 可选的嵌套模型
+
+
+@app.post("/users/")
+def create_user(user: User):
+    return {"user": user, "city": user.address.city if user.address else None}</code></pre>
+    </div>
+    <p>嵌套模型让校验规则自然组合，这也是后续「数据库 ORM 模型」与「API 请求模型」分离设计的基础（第 8 章）。</p>
+
+    <h2>3.4 用 Field 添加约束与示例</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from pydantic import BaseModel, Field
+
+
+class Product(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="商品名")
+    price: float = Field(..., gt=0, description="价格，必须大于 0")
+    stock: int = Field(0, ge=0, description="库存，不能为负")
+    sku: str = Field(..., pattern=r"^[A-Z]{2}-\d{4}$", description="SKU 编码")</code></pre>
+    </div>
+    <ul>
+      <li><code>gt=0</code> / <code>ge=0</code>：数值范围约束；</li>
+      <li><code>min_length</code> / <code>max_length</code>：字符串长度约束；</li>
+      <li><code>pattern</code>：正则校验；</li>
+      <li>所有 <code>description</code> 都会出现在 <code>/docs</code> 文档中。</li>
+    </ul>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>Pydantic 模型是贯穿整个 FastAPI 的核心抽象——第 4 章依赖注入会用它声明依赖的返回值；第 8 章数据库集成会区分「Pydantic Schema」和「SQLAlchemy Model」；第 9 章认证会用模型声明 Token 与用户信息。掌握好本章，后续事半功倍。
+    </div>
+
+    <h2>3.5 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 基础请求体<span class="ex-level">★ 简单</span></div>
+      <p>定义一个 <code>POST /books/</code>，接收 <code>{title, author, pages, published}</code> 四个字段（<code>published</code> 默认 <code>true</code>），返回完整对象。</p>
+      <div class="expected"><strong>预期输出：</strong>POST 缺省 <code>published</code> 时返回中该字段为 <code>true</code>；缺 <code>title</code> 时返回 422。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 嵌套模型<span class="ex-level">★★ 中等</span></div>
+      <p>定义 <code>Order</code> 模型，包含 <code>items: List[Item]</code>（嵌套第 3.2 节的 <code>Item</code>），写一个 <code>POST /orders/</code> 返回订单总价。</p>
+      <div class="expected"><strong>预期输出：</strong>POST <code>{"items":[{"name":"a","price":10},{"name":"b","price":20}]}</code>，返回总价 <code>30.0</code>。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · Field 约束<span class="ex-level">★★★ 较难</span></div>
+      <p>给 <code>Product.sku</code> 加正则约束（如 <code>^[A-Z]{2}-\d{4}$</code>），分别用合法与非法的 SKU 测试，观察 422 差异。</p>
+      <div class="expected"><strong>验证方法：</strong><code>"AB-1234"</code> 通过；<code>"ab-1234"</code> 或 <code>"A1-234"</code> 返回 422，<code>detail[0].loc</code> 指向 <code>body.sku</code>。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>请求模型、响应模型、数据库模型要<strong>分开定义</strong>，不要复用同一个类。因为三者职责不同（校验输入 / 塑造输出 / 持久化），混用会导致「数据库字段泄露到 API」或「API 字段污染数据库」。这个原则在第 8 章会详细展开。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="02-path-request.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 2 章 · 路径与请求处理</div>
+      </a>
+      <a class="next" href="../02-intermediate/04-dependency.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 4 章 · 依赖注入 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

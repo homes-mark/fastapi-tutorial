@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实战项目 · 阶段二：多模块 + 数据库</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="project-stage2">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 实战项目 / 阶段二</div>
+    <h1>实战项目 · 阶段二：多模块 + 数据库</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：阶段一 + 第 4、8 章</span>
+      <span class="tag">目标：持久化 + 分层</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本阶段目标</h4>
+      <ul>
+        <li>把单文件拆分成清晰的多模块结构（models / schemas / routers）；</li>
+        <li>用 SQLAlchemy + SQLite 替换内存字典，实现数据持久化；</li>
+        <li>用 <code>get_db</code> 依赖管理会话，区分 ORM 模型与 Pydantic Schema。</li>
+      </ul>
+    </div>
+
+    <h2>目录结构（增量变化）</h2>
+    <div class="code-block">
+      <div class="code-header"><span>项目结构</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">app/
+├── main.py          # 应用入口，挂载路由
+├── database.py      # 引擎、会话、Base
+├── models.py        # SQLAlchemy ORM 模型
+├── schemas.py       # Pydantic 请求/响应模型
+├── deps.py          # get_db 等依赖
+└── routers/
+    └── products.py  # 商品路由</code></pre>
+    </div>
+    <p>对比阶段一的单文件，现在职责分离：<strong>数据库层</strong>（models）<strong>、接口层</strong>（schemas）<strong>、路由层</strong>（routers）各司其职。</p>
+
+    <h2>关键代码</h2>
+    <div class="code-block">
+      <div class="code-header"><span>database.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+DATABASE_URL = "sqlite:///./app.db"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>models.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import Column, Integer, String, Float
+from database import Base
+
+
+class ProductDB(Base):
+    __tablename__ = "products"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    price = Column(Float)
+    stock = Column(Integer, default=0)</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>schemas.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from pydantic import BaseModel, Field, ConfigDict
+
+
+class ProductCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    price: float = Field(..., gt=0)
+    stock: int = Field(0, ge=0)
+
+
+class ProductOut(ProductCreate):
+    id: int
+    model_config = ConfigDict(from_attributes=True)  # 从 ORM 对象读取</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>deps.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from database import SessionLocal
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>routers/products.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+import models, schemas
+from deps import get_db
+
+router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.get("/", response_model=list[schemas.ProductOut])
+def list_products(db: Session = Depends(get_db)):
+    return db.query(models.ProductDB).all()
+
+
+@router.post("/", response_model=schemas.ProductOut, status_code=201)
+def create_product(p: schemas.ProductCreate, db: Session = Depends(get_db)):
+    db_product = models.ProductDB(**p.model_dump())
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+
+@router.get("/{product_id}", response_model=schemas.ProductOut)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.get(models.ProductDB, product_id)
+    if not product:
+        raise HTTPException(404, "商品不存在")
+    return product</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+import models
+from database import engine
+from routers import products
+
+models.Base.metadata.create_all(bind=engine)  # 开发用建表
+
+app = FastAPI(title="商品管理 API", version="0.2.0")
+app.include_router(products.router)</code></pre>
+    </div>
+
+    <h2>关键点解析</h2>
+    <ul>
+      <li><strong>APIRouter</strong>：用 <code>prefix</code> 和 <code>tags</code> 组织路由，<code>include_router</code> 挂载；</li>
+      <li><strong>会话依赖</strong>：每个请求通过 <code>get_db</code> 拿独立会话，结束自动关闭；</li>
+      <li><strong>ORM vs Schema</strong>：<code>ProductDB</code> 负责持久化，<code>ProductOut</code> 控制输出，二者分离；</li>
+      <li><strong>持久化</strong>：数据存入 <code>app.db</code>，重启不再丢失。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 坑点提醒</div>
+      <p><code>create_all</code> 只在开发用，生产要用 Alembic 迁移；SQLite 必须配 <code>check_same_thread=False</code>；响应模型务必用 <code>from_attributes=True</code> 才能从 ORM 对象读字段。</p>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">验收测试</div>
+      <ol>
+        <li>创建商品后<strong>重启服务</strong>，<code>GET /products/</code> 数据仍在（持久化生效）；</li>
+        <li>查看 <code>app.db</code> 文件已生成，可用 SQLite 工具查表；</li>
+        <li><code>/docs</code> 里能看到 <code>products</code> 标签分组。</li>
+      </ol>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 增量说明</div>
+      <p>阶段三会新增 <code>users</code> 模块：用户注册、密码哈希、JWT 登录，以及下单后异步发通知邮件。届时你会看到 <code>get_current_user</code> 依赖如何保护商品接口。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="01-stage1.html">
+        <div class="dir">上一阶段</div>
+        <div class="lbl">← 阶段一 · 单模块 CRUD</div>
+      </a>
+      <a class="next" href="03-stage3.html">
+        <div class="dir">下一阶段</div>
+        <div class="lbl">阶段三 · 认证 + 后台任务 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

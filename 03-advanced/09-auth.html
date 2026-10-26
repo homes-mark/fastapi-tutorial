@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 9 章 · 身份认证与授权</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="09-auth">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 高级 / 第 9 章</div>
+    <h1>第 9 章 · 身份认证与授权</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：第 4、8 章</span>
+      <span class="tag">预计：75 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>区分「认证（Authentication）」与「授权（Authorization）」；</li>
+        <li>掌握 OAuth2 密码流与 JWT 的基本原理与实现；</li>
+        <li>学会用 <code>passlib</code> 安全地哈希存储密码；</li>
+        <li>用依赖注入实现 <code>get_current_user</code> 保护路由。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 4 章依赖注入、第 8 章数据库。了解 HTTP 头、Base64 编码。</p>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 依赖版本</div>
+      <p>本章使用 <code>python-jose[cryptography]==3.3.0</code>（JWT）、<code>passlib[bcrypt]==1.7.4</code>（密码哈希）、<code>python-multipart==0.0.9</code>（OAuth2 表单）。</p>
+    </div>
+
+    <h2>9.1 认证 vs 授权</h2>
+    <ul>
+      <li><strong>认证（Authentication）</strong>：确认「你是谁」——登录、验证密码、签发令牌；</li>
+      <li><strong>授权（Authorization）</strong>：确认「你能做什么」——某个用户能否访问某个资源。</li>
+    </ul>
+    <p>两者常被混为一谈，但流程上通常是：先认证拿到身份，再基于身份做授权判断。</p>
+
+    <h2>9.2 密码哈希（绝不存明文）</h2>
+    <div class="code-block">
+      <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)</code></pre>
+    </div>
+    <p>数据库里永远只存 <code>hash_password()</code> 的结果，登录时用 <code>verify_password()</code> 比对。这样即使数据库泄露，攻击者也拿不到明文密码。</p>
+
+    <h2>9.3 JWT 令牌</h2>
+    <p>JWT（JSON Web Token）是一种无状态令牌：服务器签发后，客户端携带它，服务器通过签名验证真伪，无需存 session。</p>
+    <div class="code-block">
+      <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from datetime import datetime, timedelta
+from jose import jwt
+
+SECRET_KEY = "your-secret-key"     # 生产环境应从环境变量读取
+ALGORITHM = "HS256"
+EXPIRE_MINUTES = 30
+
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_token(token: str):
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])</code></pre>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">⚠️ 安全红线</div>
+      <p><code>SECRET_KEY</code> 绝不能硬编码在代码里提交到仓库——要用环境变量或密钥管理服务。JWT 过期时间要设短，敏感操作要二次校验。<strong>不要在 JWT 里放密码等敏感信息</strong>（它是可解码的，只是不可篡改）。</p>
+    </div>
+
+    <h2>9.4 用依赖注入保护路由</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = decode_token(token)
+        username = payload.get("sub")
+        if username is None:
+            raise HTTPException(401, "无效令牌")
+        return {"username": username}
+    except Exception:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "令牌无效或过期")
+
+
+@app.get("/users/me")
+def read_me(current_user=Depends(get_current_user)):
+    return current_user</code></pre>
+    </div>
+    <p>现在任何带 <code>Depends(get_current_user)</code> 的路由，都会自动要求合法令牌。这和第 4 章的 <code>verify_api_key</code> 是同一个模式，只是升级成了标准的 OAuth2 + JWT。</p>
+
+    <div class="callout info">
+      <div class="callout-title">📖 OAuth2 密码流</div>
+      <p>FastAPI 的 <code>OAuth2PasswordBearer</code> 实现了「密码流」（Resource Owner Password Credentials）。它让 <code>/docs</code> 里的「Authorize」按钮可用：填入用户名密码换取 token，再带着 token 调接口。这是入门理解 OAuth2 的最佳切入口。</p>
+    </div>
+
+    <h2>9.5 授权：角色权限</h2>
+    <div class="code-block">
+      <div class="code-header"><span>授权示例</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">def require_role(role: str):
+    def checker(current_user=Depends(get_current_user)):
+        if current_user.get("role") != role:
+            raise HTTPException(403, "权限不足")
+        return current_user
+    return checker
+
+
+@app.get("/admin/")
+def admin_only(user=Depends(require_role("admin"))):
+    return {"message": "仅管理员可见"}</code></pre>
+    </div>
+    <p>通过「依赖工厂」<code>require_role</code>，可以灵活地给不同路由绑定不同权限要求。</p>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>本章 = 依赖注入（第 4 章）+ 数据库（第 8 章）的合体。<code>get_current_user</code> 内部会查数据库拿用户，再用依赖注入保护路由。实战项目阶段三会完整落地「注册 → 登录 → 受保护接口」的闭环。
+    </div>
+
+    <h2>9.6 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 密码哈希<span class="ex-level">★ 简单</span></div>
+      <p>用 <code>hash_password</code> / <code>verify_password</code> 分别验证「正确密码通过、错误密码拒绝」。</p>
+      <div class="expected"><strong>验证方法：</strong>打印 <code>verify_password("123", hash_password("123"))</code> 为 <code>True</code>，错误密码为 <code>False</code>。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 签发与验证 JWT<span class="ex-level">★★ 中等</span></div>
+      <p>签发一个带 <code>sub</code> 和 <code>exp</code> 的 token，再解码验证；篡改一个字符后验证是否失败。</p>
+      <div class="expected"><strong>验证方法：</strong>合法 token 解码成功；篡改后的 token 抛异常（签名不匹配）。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 保护路由<span class="ex-level">★★★ 较难</span></div>
+      <p>实现完整流程：<code>/token</code> 登录换取 token，<code>/users/me</code> 带 token 访问，不带则 401。</p>
+      <div class="expected"><strong>验证方法：</strong>不带 token 访问 <code>/users/me</code> 返回 401；带正确 token 返回用户信息。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>密码必哈希存储；<code>SECRET_KEY</code> 走环境变量；JWT 短过期 + 可选刷新令牌；用依赖注入统一鉴权而非在每个路由里写判断；敏感操作（改密码、删账号）单独二次验证。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="08-database.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 8 章 · 数据库集成</div>
+      </a>
+      <a class="next" href="10-websocket.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 10 章 · WebSocket 与部署 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

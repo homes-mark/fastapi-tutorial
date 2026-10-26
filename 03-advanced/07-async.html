@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 7 章 · 异步编程 async/await</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="07-async">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 高级 / 第 7 章</div>
+    <h1>第 7 章 · 异步编程 async/await</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：第 1–6 章</span>
+      <span class="tag">预计：60 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解同步阻塞 vs 异步并发的本质区别；</li>
+        <li>掌握事件循环、<code>async def</code>、<code>await</code> 的基本概念；</li>
+        <li>知道何时该用 <code>async def</code> 路由、何时不该用（关键！）；</li>
+        <li>理解 FastAPI 如何调度异步与同步路由。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>前 6 章。对「阻塞 I/O」有基本体感即可。</p>
+    </div>
+
+    <h2>7.1 为什么要异步</h2>
+    <p>Web 服务的瓶颈往往不是 CPU，而是 <strong>I/O 等待</strong>：读数据库、调第三方 API、读写文件，都要等。同步模式下，进程在等待时<strong>什么也做不了</strong>；异步模式则能在等待时<strong>切换到别的任务</strong>，大幅提升并发吞吐。</p>
+
+    <div class="callout info">
+      <div class="callout-title">📖 事件循环（Event Loop）</div>
+      <p>异步编程的核心是一个「事件循环」：它维护一批任务，遇到 <code>await</code> 挂起当前任务、去执行别的任务，等被挂起的 I/O 完成后再回来继续。这一切在<strong>单线程</strong>里完成，靠「协作式切换」而非多线程抢占。</p>
+    </div>
+
+    <h2>7.2 基本语法</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import asyncio
+
+
+async def fetch_data():
+    # 模拟异步 I/O（如数据库查询、HTTP 请求）
+    await asyncio.sleep(1)
+    return "数据"
+
+
+@app.get("/data/")
+async def read_data():
+    result = await fetch_data()   # 挂起，让出控制权
+    return {"result": result}</code></pre>
+    </div>
+    <ul>
+      <li><code>async def</code>：声明一个<strong>协程函数</strong>；</li>
+      <li><code>await</code>：挂起当前协程，等待一个可等待对象（awaitable）完成；</li>
+      <li>只有<strong>真正异步的库</strong>（如 <code>httpx.AsyncClient</code>、<code>asyncpg</code>、<code>aiosqlite</code>）才能从 <code>await</code> 中获益。</li>
+    </ul>
+
+    <h2>7.3 关键：async 路由与阻塞的陷阱</h2>
+    <p>这是 FastAPI 异步编程<strong>最容易踩的坑</strong>。看下面两个对比：</p>
+    <div class="code-block">
+      <div class="code-header"><span>反模式：async 里放阻塞代码</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import time
+
+@app.get("/slow/")
+async def slow_endpoint():
+    time.sleep(5)   # ❌ 阻塞！整个事件循环被卡住 5 秒
+    return {"done": True}</code></pre>
+    </div>
+    <p><code>time.sleep</code> 是<strong>同步阻塞</strong>的，即使函数是 <code>async def</code>，它也会卡住整个事件循环，期间<strong>所有请求都无法处理</strong>。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>正确做法</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import asyncio
+
+@app.get("/slow/")
+async def slow_endpoint():
+    await asyncio.sleep(5)  # ✅ 异步等待，让出控制权
+    return {"done": True}</code></pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 黄金法则</div>
+      <p>如果路由里<strong>只有同步阻塞代码</strong>（如普通 <code>requests</code>、同步 <code>sqlalchemy</code>、CPU 密集计算），就<strong>别用 <code>async def</code></strong>，用普通 <code>def</code>。FastAPI 会把同步路由放到<strong>线程池</strong>里执行，反而能避免阻塞事件循环。反过来，用了异步库（<code>httpx.AsyncClient</code> 等）才用 <code>async def</code>。</p>
+    </div>
+
+    <table>
+      <tr><th>场景</th><th>推荐写法</th></tr>
+      <tr><td>纯 CPU 计算 / 同步库调用</td><td><code>def</code>（进线程池）</td></tr>
+      <tr><td>异步 I/O（async 库）</td><td><code>async def</code></td></tr>
+      <tr><td>async 里混入少量阻塞</td><td>用 <code>run_in_threadpool</code> 包裹</td></tr>
+    </table>
+
+    <h2>7.4 异步 HTTP 客户端</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import httpx
+
+@app.get("/proxy/")
+async def proxy():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://api.example.com/data")
+    return resp.json()</code></pre>
+    </div>
+    <p>依赖版本：<code>httpx==0.27.0</code>。用 <code>AsyncClient</code> 才能在 <code>await</code> 中非阻塞地发请求。</p>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>异步是贯穿后面所有章节的「性能底座」。第 8 章的异步数据库驱动（<code>asyncpg</code>/<code>aiosqlite</code>）、第 10 章的 WebSocket（天然异步）都建立在本章的事件循环之上。
+    </div>
+
+    <h2>7.5 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 观察阻塞<span class="ex-level">★★ 中等</span></div>
+      <p>写两个路由：一个 <code>async def</code> 里用 <code>time.sleep(5)</code>，另一个普通 <code>def</code> 快速返回。先访问慢路由，再立刻访问快路由。</p>
+      <div class="expected"><strong>验证方法：</strong>慢路由的 <code>time.sleep</code> 会阻塞事件循环，导致快路由也要等 5 秒才响应——这正是「async 里放阻塞代码」的危害。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 正确异步等待<span class="ex-level">★★ 中等</span></div>
+      <p>把练习 1 的 <code>time.sleep(5)</code> 改成 <code>await asyncio.sleep(5)</code>，重复测试。</p>
+      <div class="expected"><strong>验证方法：</strong>快路由这次<strong>立即</strong>返回，不再被慢路由阻塞。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 并发请求<span class="ex-level">★★★ 较难</span></div>
+      <p>用 <code>asyncio.gather</code> 并发调用 3 个异步函数，对比顺序执行的总耗时。</p>
+      <div class="expected"><strong>验证方法：</strong>并发总耗时 ≈ 单个任务耗时，而非三倍。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>先判断「这个 I/O 是异步库吗？」——是，用 <code>async def</code> + <code>await</code>；不是，用普通 <code>def</code>。不要在 <code>async def</code> 里混入 <code>time.sleep</code>、同步 <code>requests</code>、CPU 密集循环。这是把高性能 FastAPI 写慢的第一大原因。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="../02-intermediate/06-background.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 6 章 · 后台任务</div>
+      </a>
+      <a class="next" href="08-database.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 8 章 · 数据库集成 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

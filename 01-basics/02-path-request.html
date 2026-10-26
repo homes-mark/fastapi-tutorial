@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 2 章 · 路径与请求处理</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="02-path-request">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 入门 / 第 2 章</div>
+    <h1>第 2 章 · 路径与请求处理</h1>
+
+    <div class="tags">
+      <span class="tag">难度：入门</span>
+      <span class="tag">前置：第 1 章</span>
+      <span class="tag">预计：45 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>掌握路径参数、查询参数、请求体的声明方式与区别；</li>
+        <li>理解 FastAPI 如何根据参数位置自动推断数据来源；</li>
+        <li>学会路径匹配规则、参数校验与默认值；</li>
+        <li>能用 <code>Query</code>、<code>Path</code> 做更精细的参数约束与校验。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 1 章内容：能创建 <code>FastAPI</code> 实例、写路径操作装饰器、启动 Uvicorn。</p>
+    </div>
+
+    <h2>2.1 请求的三种参数来源</h2>
+    <p>HTTP 请求里，参数可以出现在三个位置，FastAPI 通过<strong>函数参数声明的位置</strong>自动区分：</p>
+    <table>
+      <tr><th>参数类型</th><th>URL 示例</th><th>在 FastAPI 中如何声明</th></tr>
+      <tr><td>路径参数（Path）</td><td><code>/items/42</code></td><td>写在路径字符串 <code>{item_id}</code> 里</td></tr>
+      <tr><td>查询参数（Query）</td><td><code>/items?page=1&amp;size=10</code></td><td>普通函数参数（不带默认值则必填）</td></tr>
+      <tr><td>请求体（Body）</td><td>POST 的 JSON 载荷</td><td>声明为 Pydantic 模型参数（第 3 章详述）</td></tr>
+    </table>
+
+    <h2>2.2 路径参数</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+def read_item(item_id: int):
+    # item_id 从 URL 路径中提取，并自动转成 int
+    return {"item_id": item_id, "type": type(item_id).__name__}</code></pre>
+    </div>
+    <p>访问 <code>/items/42</code>，返回 <code>{"item_id":42,"type":"int"}</code>。注意：</p>
+    <ul>
+      <li>URL 里的 <code>42</code> 是字符串，但 FastAPI 根据类型注解 <code>int</code> 自动转换；</li>
+      <li>访问 <code>/items/abc</code> 会得到 <strong>422 校验错误</strong>，因为 <code>abc</code> 无法转成 <code>int</code>——这就是声明式校验的威力。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 路径顺序陷阱（重要）</div>
+      <p>路由是按<strong>声明顺序</strong>匹配的。固定路径必须写在带参数路径的<strong>前面</strong>：</p>
+      <pre><code class="language-python">@app.get("/users/me")        # 先声明固定路径
+def read_me():
+    return {"id": "me"}
+
+@app.get("/users/{user_id}")  # 后声明动态路径
+def read_user(user_id: str):
+    return {"id": user_id}</code></pre>
+      <p>如果顺序颠倒，访问 <code>/users/me</code> 会被 <code>{user_id}</code> 捕获，把 <code>me</code> 当成 <code>user_id</code> 传进去。</p>
+    </div>
+
+    <h2>2.3 查询参数</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+from typing import Optional
+
+app = FastAPI()
+
+
+@app.get("/items/")
+def list_items(page: int = 1, size: int = 10, keyword: Optional[str] = None):
+    # page、size 是查询参数（有默认值），keyword 是可选的查询参数
+    return {"page": page, "size": size, "keyword": keyword}</code></pre>
+    </div>
+    <ul>
+      <li>没有默认值的参数 → <strong>必填</strong>查询参数；</li>
+      <li>有默认值的参数 → 可选查询参数；</li>
+      <li><code>Optional[str] = None</code> → 可选且可为空。</li>
+    </ul>
+
+    <h2>2.4 用 Query / Path 做精细校验</h2>
+    <p>需要额外约束（如长度、范围、别名）时，用 <code>Query</code> 和 <code>Path</code> 补充元数据：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI, Query, Path
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+def read_item(
+    item_id: int = Path(..., ge=1, description="物品 ID，必须 >= 1"),
+    q: str = Query(None, min_length=3, max_length=50, description="搜索关键词"),
+):
+    return {"item_id": item_id, "q": q}</code></pre>
+    </div>
+    <ul>
+      <li><code>Path(..., ge=1)</code>：<code>...</code> 表示必填，<code>ge=1</code> 表示大于等于 1；</li>
+      <li><code>Query(None, min_length=3)</code>：可选，但若提供则长度需在 3~50 之间；</li>
+      <li>这些约束会自动反映在 <code>/docs</code> 文档里，并触发 422 校验。</li>
+    </ul>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>本章的「参数自动校验」正是 Pydantic 能力的初步体现——第 3 章会看到，请求体用 Pydantic 模型声明后，能获得<strong>更强大、嵌套、可复用</strong>的校验与序列化能力。而 <code>Query</code> / <code>Path</code> 本质上就是「参数级的 Pydantic 约束」。
+    </div>
+
+    <h2>2.5 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 混合参数<span class="ex-level">★ 简单</span></div>
+      <p>写一个 <code>GET /users/{user_id}/posts</code> 路由，接收路径参数 <code>user_id: int</code> 和查询参数 <code>limit: int = 10</code>，返回这两个值。</p>
+      <div class="expected"><strong>预期输出：</strong>访问 <code>/users/7/posts?limit=3</code> 返回 <code>{"user_id":7,"limit":3}</code>。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 路径顺序验证<span class="ex-level">★★ 中等</span></div>
+      <p>把 <code>/users/me</code> 声明在 <code>/users/{user_id}</code> 之后，观察访问 <code>/users/me</code> 时发生了什么，再把顺序调回来对比。</p>
+      <div class="expected"><strong>验证方法：</strong>顺序颠倒时访问 <code>/users/me</code> 会走 <code>{user_id}</code> 分支（返回 <code>{"id":"me"}</code> 而不是固定值）；调回正确顺序后返回固定值。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 参数校验<span class="ex-level">★★ 中等</span></div>
+      <p>用 <code>Path(..., ge=1, le=1000)</code> 约束一个路径参数，然后用 <code>/items/0</code> 和 <code>/items/2000</code> 测试。</p>
+      <div class="expected"><strong>预期输出：</strong>两者都应返回 422 校验错误，错误信息里包含「大于等于 1」或「小于等于 1000」的提示。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>优先用<strong>类型注解</strong>声明参数，只在需要额外约束时才引入 <code>Query</code>/<code>Path</code>。过多的 <code>Query(...)</code> 会让函数签名变得冗长，可读性下降。校验逻辑属于「数据层」，尽量放在 Pydantic 模型里（第 3 章），路由函数保持薄。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="01-intro.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 1 章 · 简介与安装</div>
+      </a>
+      <a class="next" href="03-request-body.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 3 章 · 请求体与 Pydantic →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

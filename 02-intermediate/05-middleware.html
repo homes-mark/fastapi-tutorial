@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 5 章 · 中间件</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="05-middleware">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 进阶 / 第 5 章</div>
+    <h1>第 5 章 · 中间件（Middleware）</h1>
+
+    <div class="tags">
+      <span class="tag">难度：进阶</span>
+      <span class="tag">前置：第 4 章</span>
+      <span class="tag">预计：45 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解中间件在请求处理链路中的位置与作用；</li>
+        <li>掌握 <code>@app.middleware("http")</code> 的写法；</li>
+        <li>学会实现日志记录、请求计时、CORS 跨域等常见中间件；</li>
+        <li>理解中间件与依赖注入的区别与适用场景。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 4 章依赖注入（便于对比）。了解 HTTP 请求/响应模型。</p>
+    </div>
+
+    <h2>5.1 中间件是什么</h2>
+    <p>中间件是一个「包裹」在路由处理函数<strong>外层</strong>的函数：请求进入时先经过中间件，再进入路由；响应返回时也先经过中间件。它适合处理<strong>全局性、横切</strong>的逻辑。</p>
+
+    <div class="relation">
+      <strong>🔗 与依赖注入的区别：</strong>依赖注入作用于<strong>特定路由</strong>（显式声明才生效），是「按需」的；中间件作用于<strong>所有请求</strong>，是「全局」的。粒度不同：要做全局日志、全局 CORS、全局异常兜底 → 中间件；要按路由复用逻辑 → 依赖注入。
+    </div>
+
+    <h2>5.2 基本写法</h2>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import time
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+
+
+@app.middleware("http")
+async def add_process_time(request: Request, call_next):
+    start = time.perf_counter()
+    # call_next 把请求传给下一个中间件或最终的路由处理函数
+    response = await call_next(request)
+    process_time = time.perf_counter() - start
+    # 给响应加一个自定义头
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello"}</code></pre>
+    </div>
+    <p>现在每次请求的响应头里都会带 <code>X-Process-Time</code>，表示处理耗时。要点：</p>
+    <ul>
+      <li>中间件必须是 <code>async</code> 函数；</li>
+      <li><code>call_next(request)</code> 是分界线：之前是「请求前」逻辑，之后是「响应后」逻辑；</li>
+      <li>必须把 <code>call_next</code> 的返回值（response）最终 <code>return</code> 出去。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 顺序与性能</div>
+      <p>中间件按<strong>注册顺序</strong>依次执行（后注册的在更外层）。中间件里若放了阻塞操作（如同步的数据库查询），会拖慢<strong>所有</strong>请求，所以要特别小心——性能敏感的逻辑别放这里。中间件无法直接访问路由的依赖（如当前用户），这是它和依赖注入的又一区别。</p>
+    </div>
+
+    <h2>5.3 常见中间件：CORS 跨域</h2>
+    <p>前端页面（如 <code>localhost:3000</code>）调用 API（<code>localhost:8000</code>）会触发浏览器跨域限制。用内置的 CORS 中间件解决：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # 允许的来源
+    allow_credentials=True,
+    allow_methods=["*"],                      # 允许的 HTTP 方法
+    allow_headers=["*"],                      # 允许的请求头
+)</code></pre>
+    </div>
+    <p>FastAPI 还内置了 <code>GZipMiddleware</code>（压缩响应）、<code>TrustedHostMiddleware</code>（限制 Host 头）等，可在官方文档按需取用。</p>
+
+    <h2>5.4 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 请求计时中间件<span class="ex-level">★ 简单</span></div>
+      <p>复现 5.2 的计时中间件，用 curl 的 <code>-i</code> 参数查看响应头里的 <code>X-Process-Time</code>。</p>
+      <div class="expected"><strong>验证方法：</strong><code>curl -i http://127.0.0.1:8000/</code>，响应头中出现 <code>X-Process-Time: 0.0003</code> 之类的值。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 日志中间件<span class="ex-level">★★ 中等</span></div>
+      <p>写一个中间件，在每次请求时打印 <code>方法 + 路径</code>，如 <code>GET /items</code>。</p>
+      <div class="expected"><strong>验证方法：</strong>访问任意路由，终端打印对应的方法和路径。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 对比依赖注入<span class="ex-level">★★★ 较难</span></div>
+      <p>分别用「中间件」和「依赖注入」实现同一个功能（比如记录请求路径），体会两者在作用范围上的差异。</p>
+      <div class="expected"><strong>验证方法：</strong>中间件对所有路由生效；依赖注入只有显式声明 <code>Depends</code> 的路由才生效。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>中间件要「轻」。把重逻辑（复杂校验、数据库访问）放依赖注入，中间件只做横切关注点：日志、计时、CORS、全局异常兜底。中间件里务必用 <code>async</code> 且避免阻塞调用，否则会拖垮并发性能。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="04-dependency.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 4 章 · 依赖注入</div>
+      </a>
+      <a class="next" href="06-background.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 6 章 · 后台任务 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

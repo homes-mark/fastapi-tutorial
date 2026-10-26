@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第 8 章 · 数据库集成</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="14"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+      data-current-page="08-database">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="../04-project/01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 高级 / 第 8 章</div>
+    <h1>第 8 章 · 数据库集成（SQLAlchemy）</h1>
+
+    <div class="tags">
+      <span class="tag">难度：高级</span>
+      <span class="tag">前置：第 3、4、7 章</span>
+      <span class="tag">预计：75 分钟</span>
+    </div>
+
+    <div class="objectives">
+      <h4>🎯 本章学习目标</h4>
+      <ul>
+        <li>理解 ORM 与「模型分层」：数据库模型 vs Pydantic Schema；</li>
+        <li>掌握 SQLAlchemy 建模、会话管理，以及与依赖注入的配合；</li>
+        <li>学会用 <code>get_db</code> 依赖实现「每请求一个会话」；</li>
+        <li>了解 Alembic 数据库迁移的基本思路。</li>
+      </ul>
+    </div>
+
+    <div class="prereq">
+      <h4>📚 前置知识</h4>
+      <p>第 3 章 Pydantic、第 4 章依赖注入、第 7 章异步。了解关系型数据库基本概念。</p>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 依赖版本</div>
+      <p>本章使用 <code>sqlalchemy==2.0.29</code>。异步数据库驱动可选 <code>aiosqlite==0.20.0</code>（SQLite）或 <code>asyncpg==0.29.0</code>（PostgreSQL）。</p>
+    </div>
+
+    <h2>8.1 三层模型分离（核心思想）</h2>
+    <p>生产级项目必须区分三层模型，不要混用：</p>
+    <table>
+      <tr><th>模型</th><th>作用</th><th>例子</th></tr>
+      <tr><td><strong>ORM 模型</strong>（SQLAlchemy）</td><td>映射数据库表，负责持久化</td><td><code>UserDB</code>（含密码哈希）</td></tr>
+      <tr><td><strong>Pydantic 请求模型</strong></td><td>校验客户端输入</td><td><code>UserCreate</code>（接收注册信息）</td></tr>
+      <tr><td><strong>Pydantic 响应模型</strong></td><td>塑造返回给客户端的数据</td><td><code>UserOut</code>（不含密码）</td></tr>
+    </table>
+    <p>关键：<strong>绝不要把 ORM 对象直接返回给客户端</strong>，也不要让客户端直接写入 ORM 对象。通过 Schema 隔离，才能避免密码等敏感字段泄露。</p>
+
+    <h2>8.2 定义 ORM 模型与连接</h2>
+    <div class="code-block">
+      <div class="code-header"><span>database.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+DATABASE_URL = "sqlite:///./app.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>models.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import Column, Integer, String
+from database import Base
+
+
+class UserDB(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)</code></pre>
+    </div>
+
+    <h2>8.3 用依赖注入管理会话</h2>
+    <p>把第 4 章的 <code>yield</code> 依赖和第 8 章的会话管理结合起来——这是 FastAPI 数据库集成的标准范式：</p>
+    <div class="code-block">
+      <div class="code-header"><span>deps.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from database import SessionLocal
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db          # 注入会话
+    finally:
+        db.close()        # 请求结束后关闭</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+import models
+from deps import get_db
+from database import engine
+
+models.Base.metadata.create_all(bind=engine)  # 建表（开发用）
+
+app = FastAPI()
+
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    model_config = {"from_attributes": True}  # 允许从 ORM 对象读取
+
+
+@app.post("/users/", response_model=UserOut)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    fake_hashed = "hashed_" + user.password
+    db_user = models.UserDB(email=user.email, hashed_password=fake_hashed)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user   # 由 response_model 序列化，密码不会泄露</code></pre>
+    </div>
+    <p>要点：</p>
+    <ul>
+      <li><code>get_db</code> 依赖为<strong>每个请求</strong>创建独立会话，请求结束自动关闭；</li>
+      <li><code>response_model=UserOut</code> 保证即使 <code>db_user</code> 里有密码，也不会返回给客户端；</li>
+      <li><code>model_config = {"from_attributes": True}</code> 让 Pydantic 能从 ORM 对象（而非 dict）读取字段。</li>
+    </ul>
+
+    <div class="callout warn">
+      <div class="callout-title">⚠️ 常见坑</div>
+      <p>忘记 <code>db.close()</code> 会导致连接泄漏；<code>create_all</code> 只适合开发，生产要用 Alembic 迁移；<code>check_same_thread</code> 是 SQLite 在多线程下的必要配置，漏了会报错。</p>
+    </div>
+
+    <div class="relation">
+      <strong>🔗 概念关联：</strong>本章是「依赖注入（第 4 章）+ Pydantic（第 3 章）+ 异步（第 7 章）」的集大成。实战项目阶段二会把这一整套落地成多模块结构；第 9 章认证会在此基础上给 <code>UserDB</code> 加密码哈希。
+    </div>
+
+    <h2>8.4 动手练习</h2>
+
+    <div class="exercise">
+      <div class="ex-title">练习 1 · 建表与写入<span class="ex-level">★★ 中等</span></div>
+      <p>搭建 SQLite + SQLAlchemy，定义 <code>ProductDB</code> 表，写一个 <code>POST /products/</code> 存入数据库。</p>
+      <div class="expected"><strong>验证方法：</strong>POST 后用 SQLite 工具查 <code>products</code> 表，能看到记录；重复 POST 相同内容应生成多条记录。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 2 · 查询接口<span class="ex-level">★★ 中等</span></div>
+      <p>加一个 <code>GET /products/</code>，用 <code>db.query</code> 返回所有商品，并用 <code>response_model</code> 过滤字段。</p>
+      <div class="expected"><strong>验证方法：</strong>返回的商品列表只包含 Schema 定义的字段，不含额外字段。</div>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">练习 3 · 防止密码泄露<span class="ex-level">★★★ 较难</span></div>
+      <p>给 <code>UserDB</code> 加 <code>hashed_password</code> 字段，故意用不含密码的 <code>UserOut</code> 作为 <code>response_model</code>，验证响应里没有密码。</p>
+      <div class="expected"><strong>验证方法：</strong>响应 JSON 里<strong>没有</strong> <code>hashed_password</code> 字段，但数据库里确实存了。</div>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">💡 最佳实践</div>
+      <p>永远通过 <code>response_model</code> 控制输出；会话生命周期交给 <code>get_db</code> 依赖；生产环境用 Alembic 管理表结构变更。ORM 层只做数据，业务逻辑放服务层，路由保持薄。</p>
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="07-async.html">
+        <div class="dir">上一章</div>
+        <div class="lbl">← 第 7 章 · 异步编程</div>
+      </a>
+      <a class="next" href="09-auth.html">
+        <div class="dir">下一章</div>
+        <div class="lbl">第 9 章 · 认证与授权 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>
