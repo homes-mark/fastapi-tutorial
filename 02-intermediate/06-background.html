@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="06-background">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：进阶</span>
       <span class="tag">前置：第 4 章</span>
       <span class="tag">预计：40 分钟</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
@@ -100,7 +102,52 @@ def create_user(email: str, background_tasks: BackgroundTasks):
     </div>
     <p>流程：请求进来 → 路由把 <code>send_welcome_email</code> 加入队列 → <strong>立即返回响应</strong> → 服务器在响应发送后执行 <code>send_welcome_email</code>。</p>
 
-    <h2>6.3 注意事项与局限</h2>
+    <h2>6.3 最重要的坑：不要带请求作用域资源</h2>
+    <p>后台任务是“响应之后”执行，而数据库会话、<code>Request</code>、ORM 对象和 <code>ContextVar</code> 都属于“请求期间”。把它们传给后台任务，看起来能跑，实际上生命周期已经失控：</p>
+
+    <div class="split-grid">
+      <div class="split-panel bad">
+        <h4>错误：把会话和 ORM 对象带进任务</h4>
+        <pre><code class="language-python">background_tasks.add_task(
+    send_email_and_log,
+    db,
+    user,
+)</code></pre>
+        <p>请求结束后会话会被关闭、ORM 对象可能 detached，连接还会被后台任务拖住。</p>
+      </div>
+      <div class="split-panel good">
+        <h4>正确：只传标量，任务自建会话</h4>
+        <pre><code class="language-python">background_tasks.add_task(
+    send_email_and_log,
+    user.id,
+)</code></pre>
+        <p>任务内部通过 <code>SessionLocal()</code> 查询需要的数据，自己负责关闭。</p>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>tasks.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from database import SessionLocal
+import models
+
+
+def send_email_and_log(user_id: int) -> None:
+    db = SessionLocal()
+    try:
+        user = db.get(models.UserDB, user_id)
+        if user is None:
+            return
+        send_welcome_email(user.email)
+    finally:
+        db.close()</code></pre>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">ContextVar 也有同样的生命周期问题</div>
+      <p>如果第 5 章用 <code>ContextVar</code> 保存 <code>request_id</code>，中间件可能在后台任务之前就已经 reset。正确做法是在路由函数中读取值，把字符串作为参数传给任务；任务内部需要时再自行 <code>set()</code> 和 <code>reset()</code>。</p>
+    </div>
+
+    <h2>6.4 注意事项与适用边界</h2>
     <ul>
       <li><strong>执行时机</strong>：后台任务在<strong>响应发送后</strong>执行，但<strong>仍与请求在同一进程</strong>；</li>
       <li><strong>不保证可靠</strong>：如果服务器在任务执行前崩溃，任务会丢失；</li>
@@ -113,11 +160,43 @@ def create_user(email: str, background_tasks: BackgroundTasks):
       <p>需要<strong>持久化、重试、定时、分布式</strong>的任务（如每天凌晨跑报表、批量发百万邮件），应该用真正的任务队列，如 <strong>Celery + Redis</strong>、<strong>RQ</strong> 或 <strong>Dramatiq</strong>。<code>BackgroundTasks</code> 只适合「轻量、一次性、不关心可靠性」的场景。实战项目阶段三会再讨论这个取舍。</p>
     </div>
 
+    <h2>6.5 从 BackgroundTasks 升级到任务队列</h2>
+    <p>是否需要消息队列，可以用三个问题判断：任务丢了会造成什么损失？失败后是否必须自动重试？是否需要查询进度或在 API 进程重启后继续执行？</p>
+    <table>
+      <tr><th>场景</th><th>BackgroundTasks</th><th>任务队列</th></tr>
+      <tr><td>欢迎邮件、缓存刷新、轻量通知</td><td>适合</td><td>可用但可能偏重</td></tr>
+      <tr><td>支付回调、审计日志、第三方数据同步</td><td>不适合</td><td>必须使用</td></tr>
+      <tr><td>失败可人工补、无需进度</td><td>适合</td><td>按可靠性要求选择</td></tr>
+      <tr><td>需要重试、状态、独立扩容</td><td>不适合</td><td>适合</td></tr>
+    </table>
+
+    <div class="code-block">
+      <div class="code-header"><span>Celery 负责概念图</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python"># FastAPI 进程：只发布任务并立即返回
+from celery.result import AsyncResult
+from tasks.celery_app import celery_app
+from tasks.reports import generate_report
+
+
+@app.post("/reports")
+def create_report():
+    task = generate_report.delay(user_id=1)
+    return {"task_id": task.id, "status": "queued"}
+
+
+@app.get("/tasks/{task_id}")
+def task_status(task_id: str):
+    result = AsyncResult(task_id, app=celery_app)
+    return {"task_id": task_id, "status": result.status}</code></pre>
+    </div>
+
+    <p>真正的后台任务执行在独立 Celery worker 中。Broker 传消息，worker 执行任务，backend 保存状态。FastAPI 进程重启不影响队列里的任务，但两者仍共享数据库、Redis、CPU 和网络资源。</p>
+
     <div class="relation">
       <strong>🔗 概念关联：</strong>后台任务常与数据库、邮件、日志等服务配合。实战项目阶段三会在「下单」接口里用后台任务发送通知邮件，让你看到它在真实业务里的落地。
     </div>
 
-    <h2>6.4 动手练习</h2>
+    <h2>6.6 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 基础后台任务<span class="ex-level">★ 简单</span></div>
@@ -140,6 +219,10 @@ def create_user(email: str, background_tasks: BackgroundTasks):
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>后台任务函数要<strong>幂等</strong>、<strong>独立</strong>（不依赖请求上下文）。任务失败要自己处理异常，因为调用方已经收到响应、无法感知失败。任务较重时，果断切换到 Celery 等成熟队列。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>本页的请求作用域陷阱、任务可靠性边界与队列选型参考自“FastAPI 入门到实战”系列第 13、14 篇；Celery 示例只保留主干概念，具体部署需结合项目规模。
     </div>
 
     <div class="page-nav">

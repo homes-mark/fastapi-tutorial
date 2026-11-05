@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="project-stage3">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：阶段二 + 第 6、9 章</span>
       <span class="tag">目标：用户体系 + 异步通知</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
@@ -80,32 +82,47 @@
     <h2>安全模块</h2>
     <div class="code-block">
       <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from datetime import datetime, timedelta
-from passlib.context import CryptContext
-from jose import jwt
+      <pre><code class="language-python">from datetime import UTC, datetime, timedelta
+import jwt
+from pwdlib import PasswordHash
+from config import settings
 
-SECRET_KEY = "CHANGE_ME_IN_PRODUCTION"
+SECRET_KEY = settings.secret_key
 ALGORITHM = "HS256"
 EXPIRE_MINUTES = 30
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_hash = PasswordHash.recommended()
 
 
-def hash_password(p): return pwd_context.hash(p)
-def verify_password(plain, hashed): return pwd_context.verify(plain, hashed)
+def hash_password(password: str) -> str:
+    return password_hash.hash(password)
 
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    to_encode.update({"exp": datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)</code></pre>
+def verify_password(plain: str, hashed: str) -> bool:
+    return password_hash.verify(plain, hashed)
+
+
+def create_access_token(user_id: int) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(minutes=EXPIRE_MINUTES),
+        "type": "access",
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)</code></pre>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">依赖说明</div>
+      <p>使用 <code>pwdlib[argon2]</code>、<code>PyJWT</code> 和 <code>python-multipart</code>。旧项目中的 <code>passlib</code>/<code>python-jose</code> 仍可维护，但新代码建议按当前 FastAPI 安全教程的库和异常类型编写。</p>
     </div>
 
     <h2>认证依赖</h2>
     <div class="code-block">
       <div class="code-header"><span>deps.py（新增）</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from fastapi import Depends, HTTPException, status
+      <pre><code class="language-python">import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 import models
 from security import SECRET_KEY, ALGORITHM
@@ -117,13 +134,16 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     credentials_exc = HTTPException(401, "无效或过期的令牌")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise credentials_exc
-    except JWTError:
+    except jwt.InvalidTokenError:
         raise credentials_exc
-    user = db.get(models.UserDB, int(user_id))
-    if user is None:
+    if payload.get("type") != "access":
+        raise credentials_exc
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise credentials_exc
+    user = db.get(models.UserDB, user_id)
+    if user is None or not user.is_active:
         raise credentials_exc
     return user</code></pre>
     </div>
@@ -144,6 +164,7 @@ def create_order(
     user=Depends(get_current_user),
 ):
     # 省略订单落库逻辑
+    # 只传标量；不要传 db、user ORM 对象或 Request
     background_tasks.add_task(tasks.send_order_notification, user.email)
     return {"message": "订单已创建，通知邮件稍后发送"}</code></pre>
     </div>
@@ -160,12 +181,13 @@ def create_order(
       <li><strong>受保护路由</strong>：商品接口加 <code>Depends(get_current_user)</code>，未登录返回 <code>401</code>；</li>
       <li><strong>OAuth2 密码流</strong>：<code>/docs</code> 里点 Authorize 填用户名密码即可测试；</li>
       <li><strong>后台任务</strong>：下单响应先返回，发邮件在后台执行（第 6 章落地）；</li>
+      <li><strong>生命周期隔离</strong>：任务只接收邮箱等标量；若任务需要数据库，应在任务内部创建独立会话；</li>
       <li><strong>依赖链</strong>：<code>get_current_user</code> 同时依赖 <code>oauth2_scheme</code> 和 <code>get_db</code>，展示了依赖嵌套。</li>
     </ul>
 
     <div class="callout warn">
       <div class="callout-title">⚠️ 生产注意</div>
-      <p><code>SECRET_KEY</code> 必须走环境变量，绝不能硬编码；<code>BackgroundTasks</code> 适合轻量通知，若邮件量大、需重试，应切换到 Celery + Redis。这些在阶段四会进一步完善。</p>
+      <p><code>SECRET_KEY</code> 必须走环境变量，绝不能硬编码；<code>BackgroundTasks</code> 适合轻量通知，若邮件量大、需重试，应切换到 Celery + Redis。生产还应在 token 中校验 <code>type="access"</code>、设置短有效期，并考虑禁用账号后的 token 失效策略。</p>
     </div>
 
     <div class="exercise">
@@ -181,6 +203,10 @@ def create_order(
     <div class="callout tip">
       <div class="callout-title">💡 增量说明</div>
       <p>阶段四做最后的企业级收尾：限流、结构化日志、健康检查、配置管理、Docker 部署与 CI 流水线，让项目真正可上线。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>本阶段认证、JWT 校验和后台任务生命周期参考自“FastAPI 入门到实战”系列第 11、13 篇；同时保留教程原有阶段三的业务演进结构。
     </div>
 
     <div class="page-nav">

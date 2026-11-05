@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>核心路线 · 20% 主干业务纵切面</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="../assets/css/highlight.css">
+<link rel="stylesheet" href="../assets/css/progress.css">
+</head>
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
+      data-current-page="core-slice">
+
+<div class="top-progress"><div class="bar"></div></div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
+      <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="02-path-request" href="../01-basics/02-path-request.html"><span class="check">✓</span>2. 路径与请求处理<span class="lvl l1">入门</span></a>
+      <a class="toc-item" data-page="03-request-body" href="../01-basics/03-request-body.html"><span class="check">✓</span>3. 请求体与 Pydantic<span class="lvl l1">入门</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#f0a500"></span> 进阶</div>
+      <a class="toc-item" data-page="04-dependency" href="../02-intermediate/04-dependency.html"><span class="check">✓</span>4. 依赖注入<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="05-middleware" href="../02-intermediate/05-middleware.html"><span class="check">✓</span>5. 中间件<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="06-background" href="../02-intermediate/06-background.html"><span class="check">✓</span>6. 后台任务<span class="lvl l2">进阶</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#ec4899"></span> 高级</div>
+      <a class="toc-item" data-page="07-async" href="../03-advanced/07-async.html"><span class="check">✓</span>7. 异步编程<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="08-database" href="../03-advanced/08-database.html"><span class="check">✓</span>8. 数据库集成<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="09-auth" href="../03-advanced/09-auth.html"><span class="check">✓</span>9. 认证与授权<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="10-websocket" href="../03-advanced/10-websocket.html"><span class="check">✓</span>10. WebSocket 与部署<span class="lvl l3">高级</span></a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-title"><span class="dot" style="background:#6366f1"></span> 实战项目</div>
+      <a class="toc-item" data-page="project-stage1" href="01-stage1.html"><span class="check">✓</span>阶段一：单模块 CRUD<span class="lvl l2">进阶</span></a>
+      <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="breadcrumb"><a href="../index.html">学习路径</a> / 实战项目 / 核心纵切面</div>
+    <h1>核心路线 · 20% 主干业务纵切面</h1>
+
+    <div class="tags">
+      <span class="tag core">28 法则主线</span>
+      <span class="tag">前置：第 1–4、6、8、9 章</span>
+      <span class="tag">目标：打通一个真实业务闭环</span>
+    </div>
+
+    <div class="objectives">
+      <h4>学完这一页，你应该能独立回答</h4>
+      <ul>
+        <li>一个请求从 URL、查询参数、JSON 请求体到响应模型，契约如何定义；</li>
+        <li>JWT 身份如何经依赖注入进入业务函数，为什么不能只做接口级权限；</li>
+        <li>数据库会话、事务提交、回滚和资源关闭分别放在哪一层；</li>
+        <li>为什么查询必须带 <code>owner_id</code>，以及如何避免 IDOR 越权；</li>
+        <li>后台任务为什么不能复用请求里的 <code>Session</code> 或 ORM 对象；</li>
+        <li>如何用少量测试覆盖认证、校验、归属隔离和核心成功路径。</li>
+      </ul>
+    </div>
+
+    <div class="core-rule">
+      <div class="core-rule-item">
+        <strong>20%</strong>
+        <span>契约、依赖、会话、认证、异步边界。它们决定业务能否安全落地。</span>
+      </div>
+      <div class="core-rule-arrow">→</div>
+      <div class="core-rule-item secondary">
+        <strong>80%</strong>
+        <span>绝大多数 CRUD、后台系统、小程序 API 和 AI 服务接口，都绕不开这五段能力。</span>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-title">先抓主干，不是跳过基础</div>
+      <p>28 法则强调的是<strong>学习顺序和投入优先级</strong>。先把一条业务链从头到尾跑通，再回头补 WebSocket、文件上传、Celery、压测、CI 等场景能力，知识之间才会有挂载点。</p>
+    </div>
+
+    <h2>1. 一条完整的业务链</h2>
+    <p>本项目用 Todo 作为最小业务对象。它不是玩具代码，而是把真实项目最常见的五段主干压缩到一个闭环里：</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-name">请求契约</div>
+        <div class="flow-note">路由、参数、状态码、响应模型</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-name">数据边界</div>
+        <div class="flow-note">Pydantic 输入与输出模型</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-name">身份与依赖</div>
+        <div class="flow-note">JWT、DB、当前用户</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-name">持久化事务</div>
+        <div class="flow-note">Repository、归属过滤、提交/回滚</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">05</div>
+        <div class="flow-name">异步边界</div>
+        <div class="flow-note">响应后再执行的安全后台任务</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">06</div>
+        <div class="flow-name">验收测试</div>
+        <div class="flow-note">401/422/404/201 与越权路径</div>
+      </div>
+    </div>
+
+    <p>最终闭环是：<strong>注册登录 → 获得 access token → 创建 Todo → 落库并提交 → 只查询自己的数据 → 响应返回后发送通知</strong>。这条链路一旦真正掌握，换业务对象只是在重复同一套工程动作。</p>
+
+    <h2>2. 最小目录，保持单向依赖</h2>
+    <div class="code-block">
+      <div class="code-header"><span>推荐结构</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash">app/
+├── main.py                 # 只负责组装应用
+├── core/
+│   ├── config.py           # 配置与密钥
+│   └── security.py         # 密码哈希、JWT
+├── db/
+│   ├── base.py             # DeclarativeBase
+│   └── session.py          # engine、SessionLocal、get_db
+├── modules/
+│   ├── auth/
+│   │   ├── router.py
+│   │   └── schema.py
+│   └── todo/
+│       ├── model.py        # SQLAlchemy ORM
+│       ├── schema.py       # Pydantic 契约
+│       ├── repository.py   # 数据访问与归属过滤
+│       ├── service.py      # 业务编排与事务
+│       └── router.py       # HTTP 映射
+└── tasks.py                # 独立后台任务
+tests/
+└── test_todos.py</code></pre>
+    </div>
+
+    <p>依赖方向保持 <code>router → service → repository → model</code>。路由只处理 HTTP；service 决定一次用例的事务；repository 只构造查询，不控制响应；model 只描述表结构。</p>
+
+    <h2>3. 先定契约，再写 SQL</h2>
+    <p>接口设计从 Pydantic 开始。输入、更新、输出必须拆开，尤其不要让客户端直接提交 ORM 对象：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/modules/todo/schema.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from datetime import datetime
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class TodoBase(BaseModel):
+    title: Annotated[str, Field(min_length=1, max_length=100)]
+    priority: Annotated[str, Field(pattern=r"^(low|medium|high)$")] = "medium"
+
+
+class TodoCreate(TodoBase):
+    pass
+
+
+class TodoUpdate(BaseModel):
+    title: Annotated[str | None, Field(default=None, min_length=1, max_length=100)]
+    done: bool | None = None
+    priority: Annotated[str | None, Field(
+        default=None,
+        pattern=r"^(low|medium|high)$",
+    )]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TodoPublic(TodoBase):
+    id: int
+    done: bool
+    owner_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)</code></pre>
+    </div>
+
+    <p><strong>为什么这就够用：</strong><code>TodoCreate</code> 防止客户端提交 <code>id</code>、<code>owner_id</code>；<code>TodoUpdate</code> 全字段可选并禁止额外字段；<code>TodoPublic</code> 是响应白名单，永远不会把内部字段泄露出去。</p>
+
+    <div class="split-grid">
+      <div class="split-panel bad">
+        <h4>不要这样写</h4>
+        <p><code>def update(payload: dict)</code> 或直接把 <code>Todo</code> ORM 模型作为请求体。这样会把字段白名单、类型转换和文档契约全部交给手写判断。</p>
+      </div>
+      <div class="split-panel good">
+        <h4>主干写法</h4>
+        <p><code>payload.model_dump(exclude_unset=True)</code> 只取客户端显式提交的字段，未传字段保持原值，适合 PATCH 更新。</p>
+      </div>
+    </div>
+
+    <h2>4. 模型、会话与事务</h2>
+    <p>ORM 模型用 SQLAlchemy 2.0 风格声明。会话依赖只负责创建、异常回滚和关闭；业务用例负责在合适的位置提交：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/db/session.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+DATABASE_URL = "sqlite:///./app.db"
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/modules/todo/model.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Todo(Base):
+    __tablename__ = "todos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(100), index=True)
+    done: Mapped[bool] = mapped_column(default=False)
+    priority: Mapped[str] = mapped_column(String(10), default="medium")
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )</code></pre>
+    </div>
+
+    <p><code>Mapped[str]</code> 表示非空，<code>Mapped[str | None]</code> 表示可空。数据库约束、IDE 类型和迁移语义因此保持一致。生产环境不要用 <code>create_all()</code> 演进表结构，应交给 Alembic。</p>
+
+    <h2>5. 身份与依赖：先把“谁在操作”确定下来</h2>
+    <p>认证不是一个可选过滤器，而是核心业务函数的入参。JWT 只放最小标识，当前用户每次从数据库读取，才能及时反映禁用、改密或权限变更。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/core/security.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from datetime import UTC, datetime, timedelta
+
+import jwt
+from pwdlib import PasswordHash
+
+from app.core.config import settings
+
+password_hash = PasswordHash.recommended()
+ALGORITHM = "HS256"
+
+
+def hash_password(password: str) -> str:
+    return password_hash.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return password_hash.verify(plain, hashed)
+
+
+def create_access_token(user_id: int) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
+        "type": "access",
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
+
+
+def decode_token(token: str) -> dict:
+    return jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[ALGORITHM],
+        options={"require": ["sub", "iat", "exp", "type"]},
+    )</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/api/deps.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from typing import Annotated
+
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+
+from app.core.security import decode_token
+from app.db.session import get_db
+from app.modules.user.model import User
+
+DB = Annotated[Session, Depends(get_db)]
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def get_current_user(
+    db: DB,
+    token: Annotated[str, Depends(oauth2_scheme)],
+) -> User:
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无法验证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = decode_token(token)
+    except jwt.InvalidTokenError:
+        raise unauthorized
+
+    if payload.get("type") != "access":
+        raise unauthorized
+
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise unauthorized
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise unauthorized
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="账号已被禁用")
+    return user
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]</code></pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">登录接口的 Content-Type 很容易错</div>
+      <p><code>OAuth2PasswordRequestForm</code> 读取的是 <code>application/x-www-form-urlencoded</code>，不是 JSON。Swagger 的 Authorize 会自动处理；自己写前端时请用 <code>URLSearchParams</code> 或表单编码，否则会得到 422。</p>
+    </div>
+
+    <h2>6. 数据级授权：把 owner_id 写进 WHERE</h2>
+    <p>接口级认证只能证明“你登录了”，不能证明“这条数据属于你”。资源归属必须进入查询条件，而不是查出来后再判断：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/modules/todo/repository.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.modules.todo.model import Todo
+from app.modules.todo.schema import TodoCreate, TodoUpdate
+
+
+def get_owned(db: Session, *, todo_id: int, owner_id: int) -> Todo | None:
+    stmt = select(Todo).where(
+        Todo.id == todo_id,
+        Todo.owner_id == owner_id,
+    )
+    return db.scalars(stmt).first()
+
+
+def list_owned(db: Session, *, owner_id: int, skip: int, limit: int) -> list[Todo]:
+    stmt = (
+        select(Todo)
+        .where(Todo.owner_id == owner_id)
+        .order_by(Todo.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    return list(db.scalars(stmt))
+
+
+def add(db: Session, *, payload: TodoCreate, owner_id: int) -> Todo:
+    todo = Todo(**payload.model_dump(), owner_id=owner_id)
+    db.add(todo)
+    db.flush()
+    return todo
+
+
+def apply_update(db: Session, *, todo: Todo, payload: TodoUpdate) -> Todo:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(todo, field, value)
+    db.flush()
+    return todo</code></pre>
+    </div>
+
+    <p><code>get_owned()</code> 同时按 <code>id</code> 和 <code>owner_id</code> 查询。访问别人的 Todo 会直接表现为 404，而不是“存在但你没权限”，从而不泄露资源是否存在。这是防 IDOR 的核心写法。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/modules/todo/service.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy.orm import Session
+
+from app.core.exceptions import NotFoundError
+from app.modules.todo import repository
+from app.modules.todo.model import Todo
+from app.modules.todo.schema import TodoCreate, TodoUpdate
+
+
+def create_todo(
+    db: Session,
+    *,
+    payload: TodoCreate,
+    owner_id: int,
+) -> Todo:
+    todo = repository.add(db, payload=payload, owner_id=owner_id)
+    db.commit()
+    db.refresh(todo)
+    return todo
+
+
+def update_todo(
+    db: Session,
+    *,
+    todo_id: int,
+    owner_id: int,
+    payload: TodoUpdate,
+) -> Todo:
+    todo = repository.get_owned(db, todo_id=todo_id, owner_id=owner_id)
+    if todo is None:
+        raise NotFoundError("Todo", todo_id)
+    repository.apply_update(db, todo=todo, payload=payload)
+    db.commit()
+    db.refresh(todo)
+    return todo</code></pre>
+    </div>
+
+    <h2>7. 路由只做 HTTP 映射</h2>
+    <p>路由应该短到可以快速扫完：接收参数、调用 service、安排后台任务、返回 ORM 对象交给 <code>response_model</code> 序列化。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/modules/todo/router.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import CurrentUser
+from app.core.exceptions import NotFoundError
+from app.db.session import get_db
+from app.modules.todo import repository, service
+from app.modules.todo.schema import TodoCreate, TodoPublic, TodoUpdate
+from app.tasks import send_todo_created_notification
+
+router = APIRouter(prefix="/api/v1/todos", tags=["todos"])
+DB = Annotated[Session, Depends(get_db)]
+
+
+@router.post("", response_model=TodoPublic, status_code=status.HTTP_201_CREATED)
+def create_todo(
+    payload: TodoCreate,
+    background_tasks: BackgroundTasks,
+    db: DB,
+    current_user: CurrentUser,
+):
+    todo = service.create_todo(
+        db,
+        payload=payload,
+        owner_id=current_user.id,
+    )
+    # 事务已经提交，后台任务只需要标量 ID 和收件地址
+    background_tasks.add_task(
+        send_todo_created_notification,
+        todo.id,
+        current_user.email,
+    )
+    return todo
+
+
+@router.get("", response_model=list[TodoPublic])
+def list_todos(
+    db: DB,
+    current_user: CurrentUser,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    return repository.list_owned(
+        db,
+        owner_id=current_user.id,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.get("/{todo_id}", response_model=TodoPublic)
+def get_todo(todo_id: int, db: DB, current_user: CurrentUser):
+    todo = repository.get_owned(
+        db,
+        todo_id=todo_id,
+        owner_id=current_user.id,
+    )
+    if todo is None:
+        raise NotFoundError("Todo", todo_id)
+    return todo</code></pre>
+    </div>
+
+    <p><code>response_model=TodoPublic</code> 同时承担文档、响应过滤和安全白名单。即使 ORM 对象未来新增了内部字段，也不会自动暴露。</p>
+
+    <h2>8. 异步边界：后台任务只收标量</h2>
+    <p><code>BackgroundTasks</code> 在响应发送后执行，仍然使用当前应用进程。它适合短小、可丢失的通知，不适合支付、审计或必须重试的任务。更重要的是：<strong>不要传请求级 Session、Request、ORM 对象或 ContextVar</strong>。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>app/tasks.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import logging
+
+from app.db.session import SessionLocal
+from app.modules.todo.model import Todo
+
+logger = logging.getLogger(__name__)
+
+
+def send_todo_created_notification(todo_id: int, email: str) -> None:
+    db = SessionLocal()
+    try:
+        todo = db.get(Todo, todo_id)
+        if todo is None:
+            return
+        # 示例中只记录日志；生产环境在这里调用邮件或消息服务
+        logger.info("通知 %s：Todo %s 已创建", email, todo.title)
+    finally:
+        db.close()</code></pre>
+    </div>
+
+    <table>
+      <tr><th>需求</th><th>选择</th><th>原因</th></tr>
+      <tr><td>欢迎邮件、轻量通知、失败可人工补</td><td><code>BackgroundTasks</code></td><td>零基础设施，响应后执行，但任务可能丢失</td></tr>
+      <tr><td>报表生成、支付回调、第三方同步、必须重试</td><td>Celery / Dramatiq / arq</td><td>持久消息、独立 worker、重试和状态查询</td></tr>
+      <tr><td>实时双向消息</td><td>WebSocket + Redis Pub/Sub</td><td>长连接和跨进程广播是另一类问题</td></tr>
+    </table>
+
+    <div class="callout danger">
+      <div class="callout-title">最常见的后台任务事故</div>
+      <p>把请求里的 <code>db</code> 直接传给后台任务<strong>不是“能跑就算对”</strong>。请求依赖结束时会话会关闭；任务会拉长连接占用；事务状态、ContextVar 和对象生命周期都不可控。任务内创建独立会话，并只传 <code>id</code>、<code>str</code> 等普通值。</p>
+    </div>
+
+    <h2>9. 验收测试：只测高价值路径</h2>
+    <p>28 法则也适用于测试。先覆盖那些“坏了会导致真实事故”的路径，而不是一开始追求覆盖率数字：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>tests/test_todos.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi.testclient import TestClient
+
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_create_todo_requires_login():
+    response = client.post("/api/v1/todos", json={"title": "learn"})
+    assert response.status_code == 401
+
+
+def test_create_todo_validation():
+    response = client.post(
+        "/api/v1/todos",
+        headers={"Authorization": "Bearer invalid"},
+        json={"title": ""},
+    )
+    # 认证失败时先于 body 业务处理返回 401
+    assert response.status_code == 401
+
+
+def test_user_cannot_read_another_users_todo(auth_client):
+    response = auth_client.get("/api/v1/todos/999")
+    assert response.status_code == 404
+
+
+def test_create_and_list_own_todo(auth_client):
+    created = auth_client.post(
+        "/api/v1/todos",
+        json={"title": "完成主干路线", "priority": "high"},
+    )
+    assert created.status_code == 201
+    todo_id = created.json()["id"]
+
+    listed = auth_client.get("/api/v1/todos")
+    assert listed.status_code == 200
+    assert any(item["id"] == todo_id for item in listed.json())</code></pre>
+    </div>
+
+    <p>真正需要单独测试的是：<strong>未认证 401、无效输入 422、访问他人资源 404、创建成功 201、更新只改显式字段、后台任务不携带请求对象</strong>。数据库事务和依赖覆盖用 <code>conftest.py</code> 做一次，不必每个用例重复。</p>
+
+    <h2>10. 这一页已经覆盖了什么</h2>
+    <ul class="checklist">
+      <li>路径、查询参数、请求体、响应模型和状态码形成清晰契约；</li>
+      <li>Pydantic 把外部输入转换成可信对象，并用响应白名单控制输出；</li>
+      <li>依赖注入统一提供数据库会话和当前用户，认证失败不会进入业务函数；</li>
+      <li>SQLAlchemy 2.0 模型表达表结构，repository 负责归属过滤，service 管理事务；</li>
+      <li>JWT 只放最小身份信息，当前用户从数据库读取，账号禁用可即时生效；</li>
+      <li>后台任务只接收标量，自己创建会话，避免请求生命周期污染；</li>
+      <li>测试优先覆盖认证、校验、越权和核心成功路径。</li>
+    </ul>
+
+    <h2>11. 剩下的 80% 何时再学</h2>
+    <p>并不是“不需要”，而是<strong>不要在主流程还没跑通时平均用力</strong>：</p>
+    <table>
+      <tr><th>能力</th><th>触发条件</th><th>推荐章节</th></tr>
+      <tr><td>Celery / 消息队列</td><td>任务必须重试、可查询、跨进程持久化</td><td>第 6 章扩展、生产实践</td></tr>
+      <tr><td>Redis 缓存与限流</td><td>读多写少、热点数据或登录防爆破</td><td>第 7、10 章</td></tr>
+      <tr><td>文件上传与对象存储</td><td>真实业务需要附件、头像或导出</td><td>按需补充</td></tr>
+      <tr><td>WebSocket</td><td>实时聊天、通知、协作编辑是核心需求</td><td>第 10 章</td></tr>
+      <tr><td>多 worker 与容器编排</td><td>需要上线、扩容、故障恢复</td><td>第 10 章、阶段四</td></tr>
+      <tr><td>完整测试金字塔与 CI</td><td>多人协作或发布频率提高</td><td>阶段四、生产实践</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-title">28 法则真正要求你做的三件事</div>
+      <p>第一，先把一条真实业务链走通；第二，每加一个能力都问它解决了哪类线上问题；第三，用测试和验收清单守住主干，不让新功能悄悄破坏认证、事务和数据归属。</p>
+    </div>
+
+    <div class="exercise">
+      <div class="ex-title">综合验收 · 不接前端也要证明能工作</div>
+      <ol>
+        <li>注册两个用户 A、B，分别登录获取 token；</li>
+        <li>A 创建一条 Todo，B 用列表查询确认看不到；</li>
+        <li>B 直接访问 A 的 <code>todo_id</code>，必须得到 404；</li>
+        <li>A 用 PATCH 只传 <code>{"done": true}</code>，确认其他字段没有被重置；</li>
+        <li>检查数据库和日志：记录已提交，后台任务使用独立会话并打印通知；</li>
+        <li>运行测试，401、422、404、201 和成功列表路径全部有断言。</li>
+      </ol>
+      <div class="expected"><strong>通过标准：</strong>即使删掉前端，仅凭 <code>/docs</code> 和测试也能完整验证业务闭环；任意一个归属过滤被去掉，测试都会失败。</div>
+    </div>
+
+    <div class="source-note">
+      <strong>内容说明：</strong>本页在现有 FastAPI 教程基础上，参考“FastAPI 入门到实战”系列中关于 Pydantic、依赖注入、SQLAlchemy、认证授权、异步与后台任务的组织方式，重新编排为一个核心业务纵切面。示例代码为本教程上下文中的独立实现。
+    </div>
+
+    <div class="page-nav">
+      <a class="prev" href="04-stage4.html">
+        <div class="dir">上一阶段</div>
+        <div class="lbl">← 阶段四 · 企业级完善</div>
+      </a>
+      <a class="next" href="../index.html">
+        <div class="dir">返回</div>
+        <div class="lbl">28 法则学习总览 →</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<button class="complete-btn">标记本章为已完成</button>
+
+<script src="../assets/js/highlight.js"></script>
+<script src="../assets/js/nav.js"></script>
+<script src="../assets/js/progress.js"></script>
+</body>
+</html>

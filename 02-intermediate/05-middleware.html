@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="05-middleware">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -62,7 +63,8 @@
         <li>理解中间件在请求处理链路中的位置与作用；</li>
         <li>掌握 <code>@app.middleware("http")</code> 的写法；</li>
         <li>学会实现日志记录、请求计时、CORS 跨域等常见中间件；</li>
-        <li>理解中间件与依赖注入的区别与适用场景。</li>
+        <li>理解中间件与依赖注入、异常处理器的职责边界；</li>
+        <li>能用 request_id 串联一次请求的日志与错误响应。</li>
       </ul>
     </div>
 
@@ -75,7 +77,7 @@
     <p>中间件是一个「包裹」在路由处理函数<strong>外层</strong>的函数：请求进入时先经过中间件，再进入路由；响应返回时也先经过中间件。它适合处理<strong>全局性、横切</strong>的逻辑。</p>
 
     <div class="relation">
-      <strong>🔗 与依赖注入的区别：</strong>依赖注入作用于<strong>特定路由</strong>（显式声明才生效），是「按需」的；中间件作用于<strong>所有请求</strong>，是「全局」的。粒度不同：要做全局日志、全局 CORS、全局异常兜底 → 中间件；要按路由复用逻辑 → 依赖注入。
+      <strong>🔗 与依赖注入的区别：</strong>依赖注入作用于<strong>特定路由</strong>（显式声明才生效），是「按需」的；中间件作用于<strong>所有请求</strong>，是「全局」的。粒度不同：全局日志、计时、CORS 适合中间件；按路由复用逻辑放依赖注入；把 <code>HTTPException</code> 或 <code>RequestValidationError</code> 映射成统一响应，用异常处理器而不是中间件硬编码。
     </div>
 
     <h2>5.2 基本写法</h2>
@@ -133,7 +135,86 @@ app.add_middleware(
     </div>
     <p>FastAPI 还内置了 <code>GZipMiddleware</code>（压缩响应）、<code>TrustedHostMiddleware</code>（限制 Host 头）等，可在官方文档按需取用。</p>
 
-    <h2>5.4 动手练习</h2>
+    <h2>5.4 用 request_id 串联日志与错误</h2>
+    <p>线上排查最怕“知道 500 了，但不知道是哪一次请求”。给每个请求生成唯一 ID，写入响应头和日志，就能把用户反馈、网关日志和应用日志串起来：</p>
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">import logging
+import uuid
+from fastapi import FastAPI, Request
+
+app = FastAPI()
+logger = logging.getLogger("app")
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    request_id = uuid.uuid4().hex[:12]
+    request.state.request_id = request_id
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "%s %s status=%s request_id=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        request_id,
+    )
+    return response</code></pre>
+    </div>
+
+    <ul>
+      <li>把 <code>request_id</code> 放在 <code>request.state</code> 中，异常处理器可以读取；</li>
+      <li>响应头返回 <code>X-Request-ID</code>，前端报错时可一并提交；</li>
+      <li>高并发下不要用模块级全局变量保存请求 ID，应该使用请求状态或 <code>ContextVar</code>；</li>
+      <li>读取请求体前要谨慎：ASGI 的 receive 通道是一次性的，中间件消费 body 后，路由可能读不到。</li>
+    </ul>
+
+    <h2>5.5 统一异常响应的位置</h2>
+    <p>请求校验失败默认返回 422，且 <code>detail</code> 是数组；业务异常可能返回字符串。前端如果不想写三套解析逻辑，可以在应用层统一错误结构：</p>
+    <div class="code-block">
+      <div class="code-header"><span>统一 422 响应</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request,
+    exc: RequestValidationError,
+):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "请求参数校验失败",
+            "request_id": getattr(request.state, "request_id", ""),
+            "errors": [
+                {
+                    "location": error["loc"][0],
+                    "field": ".".join(str(part) for part in error["loc"][1:]),
+                    "reason": error["msg"],
+                    "type": error["type"],
+                }
+                for error in exc.errors()
+            ],
+        },
+    )</code></pre>
+    </div>
+
+    <div class="callout warn">
+      <div class="callout-title">中间件顺序不是背出来的</div>
+      <p><code>add_middleware()</code> 后注册的会先进入、最后退出，整体形式类似洋葱。不要照抄固定顺序：能提前短路请求的限流或认证通常靠近外层；CORS 的位置还要考虑 500 响应是否需要带跨域头；代理层已经压缩时，应用内不要再重复 GZip。最终顺序应结合真实请求验证。</p>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">不要在全局中间件里做数据库查询</div>
+      <p>中间件服务于全部请求，包括静态文件、健康检查和错误请求。把数据库查询、复杂权限和业务判断放进去，会把无关请求也拖慢，并让错误边界变复杂。中间件保持轻，业务判断放依赖或 service。</p>
+    </div>
+
+    <h2>5.6 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 请求计时中间件<span class="ex-level">★ 简单</span></div>
@@ -156,6 +237,10 @@ app.add_middleware(
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>中间件要「轻」。把重逻辑（复杂校验、数据库访问）放依赖注入，中间件只做横切关注点：日志、计时、CORS、全局异常兜底。中间件里务必用 <code>async</code> 且避免阻塞调用，否则会拖垮并发性能。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>请求 ID、异常响应、日志与 CORS 边界参考自“FastAPI 入门到实战”系列第 10 篇；本页示例为本教程独立简化版本。
     </div>
 
     <div class="page-nav">

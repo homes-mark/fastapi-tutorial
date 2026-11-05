@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="02-path-request">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -62,7 +63,8 @@
         <li>掌握路径参数、查询参数、请求体的声明方式与区别；</li>
         <li>理解 FastAPI 如何根据参数位置自动推断数据来源；</li>
         <li>学会路径匹配规则、参数校验与默认值；</li>
-        <li>能用 <code>Query</code>、<code>Path</code> 做更精细的参数约束与校验。</li>
+        <li>能用 <code>Annotated</code> + <code>Query</code>/<code>Path</code> 做精细参数约束；</li>
+        <li>会用 <code>APIRouter</code> 把一组资源接口从单文件中拆出去。</li>
       </ul>
     </div>
 
@@ -136,29 +138,105 @@ def list_items(page: int = 1, size: int = 10, keyword: Optional[str] = None):
     <p>需要额外约束（如长度、范围、别名）时，用 <code>Query</code> 和 <code>Path</code> 补充元数据：</p>
     <div class="code-block">
       <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from fastapi import FastAPI, Query, Path
+      <pre><code class="language-python">from typing import Annotated
+from fastapi import FastAPI, Query, Path
 
 app = FastAPI()
 
 
 @app.get("/items/{item_id}")
 def read_item(
-    item_id: int = Path(..., ge=1, description="物品 ID，必须 >= 1"),
-    q: str = Query(None, min_length=3, max_length=50, description="搜索关键词"),
+    item_id: Annotated[int, Path(ge=1, description="物品 ID，必须 >= 1")],
+    q: Annotated[str | None, Query(
+        min_length=3,
+        max_length=50,
+        description="搜索关键词",
+    )] = None,
 ):
     return {"item_id": item_id, "q": q}</code></pre>
     </div>
     <ul>
-      <li><code>Path(..., ge=1)</code>：<code>...</code> 表示必填，<code>ge=1</code> 表示大于等于 1；</li>
-      <li><code>Query(None, min_length=3)</code>：可选，但若提供则长度需在 3~50 之间；</li>
+      <li><code>Annotated[int, Path(ge=1)]</code>：类型仍是 <code>int</code>，<code>Path</code> 只提供 FastAPI 元数据；</li>
+      <li><code>= None</code> 才表示可选；<code>str | None</code> 只表示“值允许为 None”；</li>
       <li>这些约束会自动反映在 <code>/docs</code> 文档里，并触发 422 校验。</li>
     </ul>
+
+    <div class="callout tip">
+      <div class="callout-title">为什么不继续写 <code>Query(None, ...)</code></div>
+      <p>老写法能运行，但默认值被包进 <code>Query(...)</code> 后，IDE 和静态类型检查器更难识别真实参数类型。<code>Annotated</code> 把“类型”和“校验元数据”分开，也让分页参数等约束可以定义成别名后跨接口复用。</p>
+    </div>
+
+    <h2>2.5 用 APIRouter 组织一个资源</h2>
+    <p>REST 的核心不是“把五个函数写在一起”，而是<strong>路径标识资源，HTTP 方法标识操作</strong>：</p>
+    <table>
+      <tr><th>操作</th><th>方法 + 路径</th><th>成功状态码</th><th>资源不存在</th></tr>
+      <tr><td>列表</td><td><code>GET /todos</code></td><td>200</td><td>-</td></tr>
+      <tr><td>创建</td><td><code>POST /todos</code></td><td>201</td><td>-</td></tr>
+      <tr><td>详情</td><td><code>GET /todos/{todo_id}</code></td><td>200</td><td>404</td></tr>
+      <tr><td>全量更新</td><td><code>PUT /todos/{todo_id}</code></td><td>200</td><td>404</td></tr>
+      <tr><td>删除</td><td><code>DELETE /todos/{todo_id}</code></td><td>204</td><td>404</td></tr>
+    </table>
+
+    <div class="code-block">
+      <div class="code-header"><span>routers/todos.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
+
+router = APIRouter(prefix="/todos", tags=["todos"])
+
+todos: dict[int, dict] = {
+    1: {"id": 1, "title": "写 FastAPI 教程", "done": False},
+}
+
+
+class TodoCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+
+
+@router.get("")
+def list_todos():
+    return list(todos.values())
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_todo(payload: TodoCreate):
+    new_id = max(todos, default=0) + 1
+    todo = {"id": new_id, "title": payload.title, "done": False}
+    todos[new_id] = todo
+    return todo
+
+
+@router.get("/{todo_id}")
+def get_todo(todo_id: int):
+    if todo_id not in todos:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo not found",
+        )
+    return todos[todo_id]</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi import FastAPI
+from routers import todos
+
+app = FastAPI(title="Todo API")
+app.include_router(todos.router)</code></pre>
+    </div>
+
+    <p><code>prefix="/todos"</code> 与 <code>@router.get("")</code> 组合出的路径是 <code>/todos</code>；如果写成 <code>@router.get("/")</code>，路径会变成 <code>/todos/</code>，客户端访问不带尾斜杠的地址时可能收到 307 重定向。</p>
+
+    <div class="callout warn">
+      <div class="callout-title">路由顺序在 APIRouter 内部同样生效</div>
+      <p>如果在 <code>/todos/{todo_id}</code> 后面才声明 <code>/todos/summary</code>，前者会先吞掉 <code>summary</code>，随后因无法转换为整数返回 422。固定路径永远放在动态路径前面。</p>
+    </div>
 
     <div class="relation">
       <strong>🔗 概念关联：</strong>本章的「参数自动校验」正是 Pydantic 能力的初步体现——第 3 章会看到，请求体用 Pydantic 模型声明后，能获得<strong>更强大、嵌套、可复用</strong>的校验与序列化能力。而 <code>Query</code> / <code>Path</code> 本质上就是「参数级的 Pydantic 约束」。
     </div>
 
-    <h2>2.5 动手练习</h2>
+    <h2>2.6 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 混合参数<span class="ex-level">★ 简单</span></div>
@@ -181,6 +259,10 @@ def read_item(
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>优先用<strong>类型注解</strong>声明参数，只在需要额外约束时才引入 <code>Query</code>/<code>Path</code>。过多的 <code>Query(...)</code> 会让函数签名变得冗长，可读性下降。校验逻辑属于「数据层」，尽量放在 Pydantic 模型里（第 3 章），路由函数保持薄。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>路由匹配顺序、<code>APIRouter</code>、尾部斜杠和 404 语义参考自“FastAPI 入门到实战”系列第 2 篇；本页示例与练习已重新组织。
     </div>
 
     <div class="page-nav">

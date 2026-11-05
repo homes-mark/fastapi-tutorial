@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="project-stage2">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：阶段一 + 第 4、8 章</span>
       <span class="tag">目标：持久化 + 分层</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
@@ -61,7 +63,8 @@
       <ul>
         <li>把单文件拆分成清晰的多模块结构（models / schemas / routers）；</li>
         <li>用 SQLAlchemy + SQLite 替换内存字典，实现数据持久化；</li>
-        <li>用 <code>get_db</code> 依赖管理会话，区分 ORM 模型与 Pydantic Schema。</li>
+        <li>用 <code>get_db</code> 依赖管理会话，区分 ORM 模型与 Pydantic Schema；</li>
+        <li>把查询、事务提交和 HTTP 错误映射放到正确层级。</li>
       </ul>
     </div>
 
@@ -83,26 +86,34 @@
     <div class="code-block">
       <div class="code-header"><span>database.py</span><button class="copy-btn">复制</button></div>
       <pre><code class="language-python">from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 DATABASE_URL = "sqlite:///./app.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()</code></pre>
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+class Base(DeclarativeBase):
+    pass</code></pre>
     </div>
 
     <div class="code-block">
       <div class="code-header"><span>models.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from sqlalchemy import Column, Integer, String, Float
+      <pre><code class="language-python">from sqlalchemy import Float, String
+from sqlalchemy.orm import Mapped, mapped_column
 from database import Base
 
 
 class ProductDB(Base):
     __tablename__ = "products"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    price = Column(Float)
-    stock = Column(Integer, default=0)</code></pre>
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), index=True)
+    price: Mapped[float] = mapped_column(Float)
+    stock: Mapped[int] = mapped_column(default=0)</code></pre>
     </div>
 
     <div class="code-block">
@@ -130,6 +141,9 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()</code></pre>
     </div>
@@ -137,6 +151,7 @@ def get_db():
     <div class="code-block">
       <div class="code-header"><span>routers/products.py</span><button class="copy-btn">复制</button></div>
       <pre><code class="language-python">from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 import models, schemas
 from deps import get_db
@@ -146,7 +161,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 @router.get("/", response_model=list[schemas.ProductOut])
 def list_products(db: Session = Depends(get_db)):
-    return db.query(models.ProductDB).all()
+    return list(db.scalars(select(models.ProductDB)))
 
 
 @router.post("/", response_model=schemas.ProductOut, status_code=201)
@@ -184,12 +199,18 @@ app.include_router(products.router)</code></pre>
       <li><strong>APIRouter</strong>：用 <code>prefix</code> 和 <code>tags</code> 组织路由，<code>include_router</code> 挂载；</li>
       <li><strong>会话依赖</strong>：每个请求通过 <code>get_db</code> 拿独立会话，结束自动关闭；</li>
       <li><strong>ORM vs Schema</strong>：<code>ProductDB</code> 负责持久化，<code>ProductOut</code> 控制输出，二者分离；</li>
+      <li><strong>事务边界</strong>：创建商品在一个用例内 <code>add → commit → refresh</code>；失败时由依赖回滚；</li>
       <li><strong>持久化</strong>：数据存入 <code>app.db</code>，重启不再丢失。</li>
     </ul>
 
     <div class="callout warn">
       <div class="callout-title">⚠️ 坑点提醒</div>
       <p><code>create_all</code> 只在开发用，生产要用 Alembic 迁移；SQLite 必须配 <code>check_same_thread=False</code>；响应模型务必用 <code>from_attributes=True</code> 才能从 ORM 对象读字段。</p>
+    </div>
+
+    <div class="callout tip">
+      <div class="callout-title">分层的最小判断标准</div>
+      <p>如果一段代码在描述 HTTP（状态码、查询参数、响应模型），放 router；如果在描述业务动作和事务（创建商品并检查库存），放下一步的 service；如果只在描述如何从数据库取数，放 repository/crud。阶段二先跑通，阶段三再引入更完整的业务模块结构。</p>
     </div>
 
     <div class="exercise">
@@ -204,6 +225,10 @@ app.include_router(products.router)</code></pre>
     <div class="callout tip">
       <div class="callout-title">💡 增量说明</div>
       <p>阶段三会新增 <code>users</code> 模块：用户注册、密码哈希、JWT 登录，以及下单后异步发通知邮件。届时你会看到 <code>get_current_user</code> 依赖如何保护商品接口。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>本阶段的 SQLAlchemy 2.0 建模、<code>get_db</code> 生命周期和分层方式参考自“FastAPI 入门到实战”系列第 8、9 篇；代码按本教程商品模型精简。
     </div>
 
     <div class="page-nav">

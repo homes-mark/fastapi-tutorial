@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="project-stage1">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：进阶</span>
       <span class="tag">前置：第 1–3 章</span>
       <span class="tag">目标：最小可用服务</span>
+      <span class="tag optional">阶段铺垫</span>
     </div>
 
     <div class="objectives">
@@ -75,14 +77,13 @@
     <h2>完整代码</h2>
     <div class="code-block">
       <div class="code-header"><span>main.py · 阶段一</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from typing import Dict, List
-from fastapi import FastAPI, HTTPException
+      <pre><code class="language-python">from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="商品管理 API", version="0.1.0")
 
 # 内存存储：id -> 商品
-fake_db: Dict[int, dict] = {}
+fake_db: dict[int, dict] = {}
 next_id = 1
 
 
@@ -96,7 +97,7 @@ class Product(ProductCreate):
     id: int
 
 
-@app.get("/products/", response_model=List[Product])
+@app.get("/products/", response_model=list[Product])
 def list_products():
     return list(fake_db.values())
 
@@ -161,6 +162,10 @@ def delete_product(product_id: int):
     <div class="callout tip">
       <div class="callout-title">💡 增量说明</div>
       <p>阶段二会做三件事：① 把代码拆成 <code>models / schemas / routers / main</code> 多模块；② 用 SQLAlchemy + SQLite 替换内存字典；③ 用 <code>get_db</code> 依赖管理会话。届时你会看到「拆模块」带来的可维护性提升。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>28 法则定位：</strong>本阶段只负责把 HTTP 契约、请求校验和 CRUD 语义跑通，是后续数据库、认证和测试的地基。不要在这里过早引入缓存、消息队列或复杂抽象。
     </div>
 
     <div class="page-nav">

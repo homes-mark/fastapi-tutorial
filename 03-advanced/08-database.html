@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="08-database">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,15 +55,17 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：第 3、4、7 章</span>
       <span class="tag">预计：75 分钟</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
       <h4>🎯 本章学习目标</h4>
       <ul>
         <li>理解 ORM 与「模型分层」：数据库模型 vs Pydantic Schema；</li>
-        <li>掌握 SQLAlchemy 建模、会话管理，以及与依赖注入的配合；</li>
+        <li>掌握 SQLAlchemy 2.0 的 <code>Mapped</code> / <code>mapped_column</code> 建模；</li>
         <li>学会用 <code>get_db</code> 依赖实现「每请求一个会话」；</li>
-        <li>了解 Alembic 数据库迁移的基本思路。</li>
+        <li>理解事务边界、归属查询与 N+1 问题；</li>
+        <li>了解 Alembic 数据库迁移和同步/异步方案的选择。</li>
       </ul>
     </div>
 
@@ -73,7 +76,7 @@
 
     <div class="callout tip">
       <div class="callout-title">💡 依赖版本</div>
-      <p>本章使用 <code>sqlalchemy==2.0.29</code>。异步数据库驱动可选 <code>aiosqlite==0.20.0</code>（SQLite）或 <code>asyncpg==0.29.0</code>（PostgreSQL）。</p>
+      <p>建议使用 <code>sqlalchemy&gt;=2.0</code> 的新风格 API。异步数据库驱动可选 <code>aiosqlite</code>（SQLite）或 <code>asyncpg</code>（PostgreSQL）；具体版本应以锁定文件为准。</p>
     </div>
 
     <h2>8.1 三层模型分离（核心思想）</h2>
@@ -90,27 +93,43 @@
     <div class="code-block">
       <div class="code-header"><span>database.py</span><button class="copy-btn">复制</button></div>
       <pre><code class="language-python">from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 DATABASE_URL = "sqlite:///./app.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()</code></pre>
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},  # 仅 SQLite 需要
+)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+class Base(DeclarativeBase):
+    pass</code></pre>
     </div>
 
     <div class="code-block">
       <div class="code-header"><span>models.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from sqlalchemy import Column, Integer, String
+      <pre><code class="language-python">from datetime import datetime
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.orm import Mapped, mapped_column
 from database import Base
 
 
 class UserDB(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)</code></pre>
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )</code></pre>
     </div>
+
+    <p><code>Mapped[str]</code> 对应非空列，<code>Mapped[str | None]</code> 对应可空列；主键类型可以从注解推断。<code>default</code> 是 Python 层默认值，<code>server_default</code> 是数据库层默认值，二者语义不同。</p>
 
     <h2>8.3 用依赖注入管理会话</h2>
     <p>把第 4 章的 <code>yield</code> 依赖和第 8 章的会话管理结合起来——这是 FastAPI 数据库集成的标准范式：</p>
@@ -123,13 +142,17 @@ def get_db():
     db = SessionLocal()
     try:
         yield db          # 注入会话
+    except Exception:
+        db.rollback()     # 业务异常时回滚
+        raise
     finally:
-        db.close()        # 请求结束后关闭</code></pre>
+        db.close()        # 无论如何都关闭</code></pre>
     </div>
 
     <div class="code-block">
       <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from fastapi import FastAPI, Depends
+      <pre><code class="language-python">from typing import Annotated
+from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import models
@@ -139,6 +162,7 @@ from database import engine
 models.Base.metadata.create_all(bind=engine)  # 建表（开发用）
 
 app = FastAPI()
+DB = Annotated[Session, Depends(get_db)]
 
 
 class UserCreate(BaseModel):
@@ -153,7 +177,7 @@ class UserOut(BaseModel):
 
 
 @app.post("/users/", response_model=UserOut)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_user(user: UserCreate, db: DB):
     fake_hashed = "hashed_" + user.password
     db_user = models.UserDB(email=user.email, hashed_password=fake_hashed)
     db.add(db_user)
@@ -166,6 +190,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
       <li><code>get_db</code> 依赖为<strong>每个请求</strong>创建独立会话，请求结束自动关闭；</li>
       <li><code>response_model=UserOut</code> 保证即使 <code>db_user</code> 里有密码，也不会返回给客户端；</li>
       <li><code>model_config = {"from_attributes": True}</code> 让 Pydantic 能从 ORM 对象（而非 dict）读取字段。</li>
+      <li><code>fake_hashed</code> 只是为了演示字段隔离，真实项目必须使用 Argon2/bcrypt 等密码哈希，绝不能拼接字符串。</li>
     </ul>
 
     <div class="callout warn">
@@ -173,11 +198,63 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
       <p>忘记 <code>db.close()</code> 会导致连接泄漏；<code>create_all</code> 只适合开发，生产要用 Alembic 迁移；<code>check_same_thread</code> 是 SQLite 在多线程下的必要配置，漏了会报错。</p>
     </div>
 
+    <h2>8.4 事务边界与数据归属</h2>
+    <p>数据库章节真正的主干不是“会写 INSERT”，而是知道<strong>谁决定提交、一次失败回滚哪些操作、查询是否带权限条件</strong>。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>service.py · 用例控制事务</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">def create_order(db: Session, *, user_id: int, payload: OrderCreate):
+    try:
+        order = Order(user_id=user_id, **payload.model_dump())
+        db.add(order)
+        db.flush()
+
+        for item in payload.items:
+            db.add(OrderItem(order_id=order.id, **item.model_dump()))
+
+        db.commit()
+        db.refresh(order)
+        return order
+    except Exception:
+        db.rollback()
+        raise</code></pre>
+    </div>
+
+    <p>简单单表 CRUD 可以让路由或 service 直接提交；涉及多张表时必须把多个写操作放在同一个用例中。不要让每个 repository 函数都偷偷 <code>commit()</code>，否则一次业务操作被拆成多个不可回滚的独立事务。</p>
+
+    <div class="callout danger">
+      <div class="callout-title">IDOR：只做登录鉴权是不够的</div>
+      <p>下面这种写法只要登录就能读任何人的数据：<code>select(Todo).where(Todo.id == todo_id)</code>。资源归属必须写进 WHERE：<code>where(Todo.id == todo_id, Todo.owner_id == current_user.id)</code>。查询不到返回 404，不泄露资源是否存在。</p>
+    </div>
+
+    <h2>8.5 N+1、关联加载与同步/异步选择</h2>
+    <p>ORM 最常见的性能陷阱是循环访问关联对象：先查 100 个用户，再对每个用户访问 <code>user.todos</code>，可能产生 1 + 100 条 SQL。使用预加载可以解决：</p>
+    <div class="code-block">
+      <div class="code-header"><span>预加载关联</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+stmt = select(User).options(selectinload(User.todos))
+users = list(db.scalars(stmt).unique())</code></pre>
+    </div>
+
+    <table>
+      <tr><th>场景</th><th>建议</th></tr>
+      <tr><td>普通 CRUD、并发不高、现有生态是同步库</td><td>同步 SQLAlchemy + 普通 <code>def</code> 路由；FastAPI 会放到线程池</td></tr>
+      <tr><td>高并发 I/O、接口内并发调用多个外部服务、大量长连接</td><td><code>AsyncSession</code> + 异步驱动 + <code>async def</code>，全链路保持一致</td></tr>
+      <tr><td>在 async 路由里调用同步 ORM</td><td>错误组合：会阻塞事件循环；改用同步 <code>def</code> 或完整异步栈</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-title">SQLAlchemy 2.0 查询优先用 select()</div>
+      <p><code>select(Todo).where(...)</code> 比旧的 <code>db.query(Todo)</code> 更适合组合查询，也是异步版本的主要写法。查询条件应使用表达式参数绑定，不要手拼 SQL 字符串。</p>
+    </div>
+
     <div class="relation">
       <strong>🔗 概念关联：</strong>本章是「依赖注入（第 4 章）+ Pydantic（第 3 章）+ 异步（第 7 章）」的集大成。实战项目阶段二会把这一整套落地成多模块结构；第 9 章认证会在此基础上给 <code>UserDB</code> 加密码哈希。
     </div>
 
-    <h2>8.4 动手练习</h2>
+    <h2>8.6 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 建表与写入<span class="ex-level">★★ 中等</span></div>
@@ -187,7 +264,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
     <div class="exercise">
       <div class="ex-title">练习 2 · 查询接口<span class="ex-level">★★ 中等</span></div>
-      <p>加一个 <code>GET /products/</code>，用 <code>db.query</code> 返回所有商品，并用 <code>response_model</code> 过滤字段。</p>
+      <p>加一个 <code>GET /products/</code>，用 <code>select(ProductDB)</code> 返回所有商品，并用 <code>response_model</code> 过滤字段。</p>
       <div class="expected"><strong>验证方法：</strong>返回的商品列表只包含 Schema 定义的字段，不含额外字段。</div>
     </div>
 
@@ -200,6 +277,10 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>永远通过 <code>response_model</code> 控制输出；会话生命周期交给 <code>get_db</code> 依赖；生产环境用 Alembic 管理表结构变更。ORM 层只做数据，业务逻辑放服务层，路由保持薄。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>SQLAlchemy 2.0、事务边界、分页、预加载与同步/异步选型参考自“FastAPI 入门到实战”系列第 8 篇；示例按本教程的商品/用户模型做了简化。
     </div>
 
     <div class="page-nav">

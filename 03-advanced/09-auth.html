@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="09-auth">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：第 4、8 章</span>
       <span class="tag">预计：75 分钟</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
@@ -61,8 +63,9 @@
       <ul>
         <li>区分「认证（Authentication）」与「授权（Authorization）」；</li>
         <li>掌握 OAuth2 密码流与 JWT 的基本原理与实现；</li>
-        <li>学会用 <code>passlib</code> 安全地哈希存储密码；</li>
-        <li>用依赖注入实现 <code>get_current_user</code> 保护路由。</li>
+        <li>学会用 <code>pwdlib</code> + Argon2 安全地哈希存储密码；</li>
+        <li>用依赖注入实现 <code>get_current_user</code> 保护路由；</li>
+        <li>理解 access/refresh token、401 与 403、资源归属隔离和 token 吊销。</li>
       </ul>
     </div>
 
@@ -73,7 +76,7 @@
 
     <div class="callout tip">
       <div class="callout-title">💡 依赖版本</div>
-      <p>本章使用 <code>python-jose[cryptography]==3.3.0</code>（JWT）、<code>passlib[bcrypt]==1.7.4</code>（密码哈希）、<code>python-multipart==0.0.9</code>（OAuth2 表单）。</p>
+      <p>新项目建议使用 FastAPI 当前安全教程采用的 <code>pwdlib[argon2]</code>（密码哈希）和 <code>PyJWT</code>（JWT），并安装 <code>python-multipart</code> 支持 OAuth2 表单。已有项目若使用 <code>passlib</code> / <code>python-jose</code> 可以继续维护，但迁移时要单独核对异常类型和 API。</p>
     </div>
 
     <h2>9.1 认证 vs 授权</h2>
@@ -86,101 +89,225 @@
     <h2>9.2 密码哈希（绝不存明文）</h2>
     <div class="code-block">
       <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from passlib.context import CryptContext
+      <pre><code class="language-python">from pwdlib import PasswordHash
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_hash = PasswordHash.recommended()  # 当前默认 Argon2
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return password_hash.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)</code></pre>
+    return password_hash.verify(plain, hashed)</code></pre>
     </div>
-    <p>数据库里永远只存 <code>hash_password()</code> 的结果，登录时用 <code>verify_password()</code> 比对。这样即使数据库泄露，攻击者也拿不到明文密码。</p>
+    <p>数据库里永远只存 <code>hash_password()</code> 的结果，登录时用 <code>verify_password()</code> 比对。密码哈希必须使用专门设计的慢哈希（Argon2、scrypt、bcrypt、PBKDF2），不能使用 MD5、SHA1 或普通 SHA256。随机 salt 由密码库负责生成和保存，不要自己实现。</p>
 
     <h2>9.3 JWT 令牌</h2>
     <p>JWT（JSON Web Token）是一种无状态令牌：服务器签发后，客户端携带它，服务器通过签名验证真伪，无需存 session。</p>
     <div class="code-block">
       <div class="code-header"><span>security.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from datetime import datetime, timedelta
-from jose import jwt
+      <pre><code class="language-python">from datetime import UTC, datetime, timedelta
+import jwt
+from config import settings
 
-SECRET_KEY = "your-secret-key"     # 生产环境应从环境变量读取
+SECRET_KEY = settings.secret_key  # 必须来自环境变量或密钥管理服务
 ALGORITHM = "HS256"
 EXPIRE_MINUTES = 30
 
 
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def create_access_token(user_id: int) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + timedelta(minutes=EXPIRE_MINUTES),
+        "type": "access",
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str):
-    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])</code></pre>
+def decode_token(token: str) -> dict:
+    return jwt.decode(
+        token,
+        SECRET_KEY,
+        algorithms=[ALGORITHM],
+        options={"require": ["sub", "iat", "exp", "type"]},
+    )</code></pre>
     </div>
+
+    <ul>
+      <li><code>sub</code> 放用户标识，JWT 规范要求它是字符串；</li>
+      <li><code>iat</code> / <code>exp</code> 用 UTC 时间，避免服务器时区导致过期时间偏差；</li>
+      <li><code>type</code> 区分 access 与 refresh，防止长有效期 refresh token 直接访问业务接口；</li>
+      <li>必须显式指定 <code>algorithms=[ALGORITHM]</code>，不要让 token 自己决定校验算法。</li>
+    </ul>
 
     <div class="callout danger">
       <div class="callout-title">⚠️ 安全红线</div>
-      <p><code>SECRET_KEY</code> 绝不能硬编码在代码里提交到仓库——要用环境变量或密钥管理服务。JWT 过期时间要设短，敏感操作要二次校验。<strong>不要在 JWT 里放密码等敏感信息</strong>（它是可解码的，只是不可篡改）。</p>
+      <p><code>SECRET_KEY</code> 绝不能硬编码在代码里提交到仓库——要用环境变量或密钥管理服务。JWT 过期时间要设短，敏感操作要二次校验。<strong>JWT 的 Payload 只是 Base64 编码，不是加密</strong>，任何人都能读取，所以不要放密码、身份证号、银行卡等敏感信息。</p>
     </div>
 
     <h2>9.4 用依赖注入保护路由</h2>
     <div class="code-block">
       <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from fastapi import Depends, HTTPException, status
+      <pre><code class="language-python">from typing import Annotated
+import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from deps import get_db
+from models import UserDB
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+DB = Annotated[Session, Depends(get_db)]
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: DB,
+):
+    unauthorized = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无法验证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = decode_token(token)
-        username = payload.get("sub")
-        if username is None:
-            raise HTTPException(401, "无效令牌")
-        return {"username": username}
-    except Exception:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "令牌无效或过期")
+    except jwt.InvalidTokenError:
+        raise unauthorized
+
+    if payload.get("type") != "access":
+        raise unauthorized
+
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise unauthorized
+
+    user = db.get(UserDB, user_id)
+    if user is None:
+        raise unauthorized
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="账号已被禁用")
+    return user
+
+
+CurrentUser = Annotated[UserDB, Depends(get_current_user)]
 
 
 @app.get("/users/me")
-def read_me(current_user=Depends(get_current_user)):
+def read_me(current_user: CurrentUser):
     return current_user</code></pre>
     </div>
-    <p>现在任何带 <code>Depends(get_current_user)</code> 的路由，都会自动要求合法令牌。这和第 4 章的 <code>verify_api_key</code> 是同一个模式，只是升级成了标准的 OAuth2 + JWT。</p>
+    <p>现在任何带 <code>CurrentUser</code> 的路由，都会自动要求合法令牌。认证失败在依赖解析阶段就返回，业务函数不会执行。每次请求回查用户，可以让“禁用账号”和“删除账号”比 JWT 过期更早生效。</p>
+
+    <div class="callout info">
+      <div class="callout-title">登录接口必须是表单编码</div>
+      <p><code>OAuth2PasswordRequestForm</code> 读取 <code>application/x-www-form-urlencoded</code>，不是 JSON。Swagger 的 Authorize 会自动处理；前端应使用 <code>URLSearchParams</code> 或等价表单编码，否则会收到 422。</p>
+    </div>
 
     <div class="callout info">
       <div class="callout-title">📖 OAuth2 密码流</div>
       <p>FastAPI 的 <code>OAuth2PasswordBearer</code> 实现了「密码流」（Resource Owner Password Credentials）。它让 <code>/docs</code> 里的「Authorize」按钮可用：填入用户名密码换取 token，再带着 token 调接口。这是入门理解 OAuth2 的最佳切入口。</p>
     </div>
 
-    <h2>9.5 授权：角色权限</h2>
+    <h2>9.5 授权：角色、资源归属与字段可见性</h2>
     <div class="code-block">
       <div class="code-header"><span>授权示例</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">def require_role(role: str):
-    def checker(current_user=Depends(get_current_user)):
-        if current_user.get("role") != role:
-            raise HTTPException(403, "权限不足")
-        return current_user
-    return checker
+      <pre><code class="language-python">def require_superuser(current_user: CurrentUser):
+    if not current_user.is_superuser:
+        raise HTTPException(403, "需要管理员权限")
+    return current_user
 
 
-@app.get("/admin/")
-def admin_only(user=Depends(require_role("admin"))):
-    return {"message": "仅管理员可见"}</code></pre>
+CurrentSuperuser = Annotated[UserDB, Depends(require_superuser)]
+
+
+@app.delete(
+    "/admin/users/{user_id}",
+    dependencies=[Depends(require_superuser)],
+)
+def delete_user(user_id: int):
+    # 认证失败 401；已登录但不是管理员 403
+    return {"deleted": user_id}</code></pre>
     </div>
-    <p>通过「依赖工厂」<code>require_role</code>，可以灵活地给不同路由绑定不同权限要求。</p>
+
+    <p>接口级角色权限只能控制“能不能调用这个接口”，不能控制“能不能读取这一行数据”。资源归属必须进入查询条件：</p>
+    <div class="code-block">
+      <div class="code-header"><span>数据级授权</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from sqlalchemy import select
+
+
+@app.get("/todos/{todo_id}")
+def get_todo(todo_id: int, db: DB, current_user: CurrentUser):
+    stmt = select(Todo).where(
+        Todo.id == todo_id,
+        Todo.owner_id == current_user.id,  # 归属条件写进 WHERE
+    )
+    todo = db.scalars(stmt).first()
+    if todo is None:
+        raise HTTPException(404, "Todo not found")
+    return todo</code></pre>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">401 与 403 不要混用</div>
+      <p>401 表示“未认证或凭据无效”，应带 <code>WWW-Authenticate: Bearer</code>；403 表示“身份已确认，但没有权限”。不要把普通用户访问管理员接口返回成 401，否则前端会误以为重新登录就能解决。</p>
+    </div>
+
+    <h2>9.6 Access Token、Refresh Token 与吊销</h2>
+    <p>单一长有效期 token 很危险：泄露后攻击者可以长期使用。常见方案是短期 access token + 长期 refresh token：</p>
+    <table>
+      <tr><th>Token</th><th>有效期</th><th>用途</th><th>校验重点</th></tr>
+      <tr><td>access token</td><td>15–60 分钟</td><td>访问业务接口</td><td><code>type == "access"</code></td></tr>
+      <tr><td>refresh token</td><td>7–30 天</td><td>换取新的 access token</td><td><code>type == "refresh"</code></td></tr>
+    </table>
+
+    <p>JWT 默认无法撤销。账号被禁用、用户改密码或退出登录后，旧 token 可能在过期前继续有效。实际项目通常组合使用：</p>
+    <ul>
+      <li><strong>短 access token</strong>：把最大风险窗口缩到分钟级；</li>
+      <li><strong>用户版本号</strong>：用户表增加 <code>token_version</code>，改密码或强制下线时递增，校验 token 中的版本是否一致；</li>
+      <li><strong>Redis 黑名单</strong>：登出时把 token 哈希写入 Redis，TTL 只保留到 token 过期；代价是每个请求多一次 Redis 查询；</li>
+      <li><strong>refresh token 轮换</strong>：每次刷新换发新 token，并用 <code>jti</code> 保存/撤销状态，避免旧 refresh token 无限续期。</li>
+    </ul>
+
+    <div class="callout tip">
+      <div class="callout-title">不要往 JWT 里塞满用户资料</div>
+      <p>邮箱、用户名、管理员标记等会变化的数据不要长期冻结在 token 里。推荐只放 <code>sub</code>、<code>exp</code>、<code>type</code>、版本号等最小声明，每次请求从数据库或缓存读取最新用户状态。</p>
+    </div>
+
+    <h2>9.7 常见错误与安全边界</h2>
+    <ul>
+      <li><strong>弱密钥/泄露密钥</strong>：使用 <code>secrets.token_urlsafe(32)</code> 生成，泄露后立即轮换；</li>
+      <li><strong>算法混淆</strong>：显式固定 <code>algorithms=["HS256"]</code>；</li>
+      <li><strong>敏感信息进日志</strong>：密码、access token、refresh token 必须脱敏；</li>
+      <li><strong>登录爆破</strong>：对 IP + 账号做限流，连续失败锁定，错误信息统一为“用户名或密码错误”；</li>
+      <li><strong>缓存认证响应</strong>：带认证的响应应设置 <code>Cache-Control: no-store</code>，避免代理或浏览器缓存其他用户数据。</li>
+    </ul>
+
+    <div class="code-block">
+      <div class="code-header"><span>旧版写法迁移提示</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python"># 旧项目可能仍在用：
+from passlib.context import CryptContext
+from jose import jwt
+
+# 新项目更推荐：
+from pwdlib import PasswordHash
+import jwt
+
+# 迁移时不要只替换 import：
+# 1. 核对 JWT 异常类型（JWTError vs InvalidTokenError）
+# 2. 核对 bcrypt 版本兼容性
+# 3. 保留旧哈希可验证能力，再逐步重哈希
+# 4. 补登录、过期、篡改、禁用账号的回归测试</code></pre>
+    </div>
 
     <div class="relation">
       <strong>🔗 概念关联：</strong>本章 = 依赖注入（第 4 章）+ 数据库（第 8 章）的合体。<code>get_current_user</code> 内部会查数据库拿用户，再用依赖注入保护路由。实战项目阶段三会完整落地「注册 → 登录 → 受保护接口」的闭环。
     </div>
 
-    <h2>9.6 动手练习</h2>
+    <h2>9.8 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 密码哈希<span class="ex-level">★ 简单</span></div>
@@ -203,6 +330,10 @@ def admin_only(user=Depends(require_role("admin"))):
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>密码必哈希存储；<code>SECRET_KEY</code> 走环境变量；JWT 短过期 + 可选刷新令牌；用依赖注入统一鉴权而非在每个路由里写判断；敏感操作（改密码、删账号）单独二次验证。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>密码哈希、JWT 声明校验、refresh token、吊销方案、角色与数据级授权参考自“FastAPI 入门到实战”系列第 11 篇；本页已把旧版 <code>passlib</code>/<code>python-jose</code> 示例迁移为当前更推荐的 <code>pwdlib</code>/PyJWT 写法。
     </div>
 
     <div class="page-nav">

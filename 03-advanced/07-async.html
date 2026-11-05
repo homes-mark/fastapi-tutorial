@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="07-async">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：第 1–6 章</span>
       <span class="tag">预计：60 分钟</span>
+      <span class="tag core">28 法则主干</span>
     </div>
 
     <div class="objectives">
@@ -62,7 +64,8 @@
         <li>理解同步阻塞 vs 异步并发的本质区别；</li>
         <li>掌握事件循环、<code>async def</code>、<code>await</code> 的基本概念；</li>
         <li>知道何时该用 <code>async def</code> 路由、何时不该用（关键！）；</li>
-        <li>理解 FastAPI 如何调度异步与同步路由。</li>
+        <li>理解 FastAPI 如何调度异步与同步路由；</li>
+        <li>会复用异步 HTTP 客户端、设置超时，并用压测数据判断优化是否有效。</li>
       </ul>
     </div>
 
@@ -137,24 +140,81 @@ async def slow_endpoint():
       <tr><td>async 里混入少量阻塞</td><td>用 <code>run_in_threadpool</code> 包裹</td></tr>
     </table>
 
-    <h2>7.4 异步 HTTP 客户端</h2>
+    <h2>7.4 异步 HTTP 客户端：复用、超时、关闭</h2>
+    <p>正确使用异步库只是第一步。生产接口还必须处理连接复用和超时，否则下游服务变慢时，请求会持续堆积并耗尽资源：</p>
     <div class="code-block">
       <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">import httpx
+      <pre><code class="language-python">from contextlib import asynccontextmanager
+from typing import Annotated
 
-@app.get("/proxy/")
-async def proxy():
-    async with httpx.AsyncClient() as client:
-        resp = await client.get("https://api.example.com/data")
+import httpx
+from fastapi import Depends, FastAPI, Request
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.http = httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=2.0, read=5.0, write=5.0, pool=1.0),
+        limits=httpx.Limits(max_connections=100),
+    )
+    yield
+    await app.state.http.aclose()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+def get_http(request: Request) -> httpx.AsyncClient:
+    return request.app.state.http
+
+
+HTTP = Annotated[httpx.AsyncClient, Depends(get_http)]
+
+
+@app.get("/proxy")
+async def proxy(client: HTTP):
+    resp = await client.get("https://api.example.com/data")
     return resp.json()</code></pre>
     </div>
-    <p>依赖版本：<code>httpx==0.27.0</code>。用 <code>AsyncClient</code> 才能在 <code>await</code> 中非阻塞地发请求。</p>
+    <p>不要在每个请求里新建 <code>AsyncClient</code>，否则连接池无法复用，每次都要重新建连。客户端应放入 <code>lifespan</code> 管理，应用关闭时统一 <code>aclose()</code>。</p>
+
+    <div class="callout warn">
+      <div class="callout-title">没有超时的外部调用是生产事故来源</div>
+      <p>只设置重试而不设置超时，会让最坏等待时间成倍放大。例如 3 次重试 × 每次 5 秒，最坏可能等待 15 秒。应该同时设置单次超时和整个操作的总预算；只对幂等请求和可恢复错误（5xx、429、连接错误）做有限重试，并使用指数退避与抖动。</p>
+    </div>
+
+    <h2>7.5 先测量，再优化</h2>
+    <p><code>async def</code> 不是性能开关。它只改变等待 I/O 时的调度方式；CPU 密集计算、同步数据库驱动和 CPU 热循环仍会占用事件循环。优化顺序应当是：<strong>先测出瓶颈，再改代码或部署</strong>。</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>最小压测命令</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-bash"># 观察吞吐、延迟分位数和错误率
+hey -n 2000 -c 50 http://127.0.0.1:8000/api/v1/todos
+
+# 或使用 wrk
+wrk -t4 -c50 -d30s http://127.0.0.1:8000/api/v1/todos</code></pre>
+    </div>
+
+    <p>重点看 P95/P99、错误率和数据库连接数，不要只看单次平均响应。常见瓶颈依次是：同步阻塞调用、N+1 查询、数据库连接池耗尽、外部服务超时、序列化大响应、worker 数量与连接预算不匹配。</p>
+
+    <table>
+      <tr><th>症状</th><th>优先怀疑</th><th>处理方向</th></tr>
+      <tr><td>async 接口 QPS 很低</td><td>事件循环里混入同步阻塞</td><td>改异步库、普通 <code>def</code> 或 <code>run_in_threadpool</code></td></tr>
+      <tr><td>P99 远高于 P50</td><td>连接池耗尽、下游抖动</td><td>超时、连接池、缓存、重试退避</td></tr>
+      <tr><td>10 条记录出现 11 条 SQL</td><td>N+1 查询</td><td>预加载关系或改为聚合查询</td></tr>
+      <tr><td>多 worker 部署后数据不稳定</td><td>用进程内存保存共享状态</td><td>改用 Redis、数据库或粘性会话</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-title">CPU 密集任务不要塞进 async 路由</div>
+      <p>图片处理、批量加密、复杂计算会持续占用事件循环。应根据任务粒度选择线程池、进程池、任务队列或独立服务。能短暂释放 GIL 的库可尝试线程池，CPU 计算通常需要进程级并行。</p>
+    </div>
 
     <div class="relation">
       <strong>🔗 概念关联：</strong>异步是贯穿后面所有章节的「性能底座」。第 8 章的异步数据库驱动（<code>asyncpg</code>/<code>aiosqlite</code>）、第 10 章的 WebSocket（天然异步）都建立在本章的事件循环之上。
     </div>
 
-    <h2>7.5 动手练习</h2>
+    <h2>7.6 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 观察阻塞<span class="ex-level">★★ 中等</span></div>
@@ -177,6 +237,10 @@ async def proxy():
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>先判断「这个 I/O 是异步库吗？」——是，用 <code>async def</code> + <code>await</code>；不是，用普通 <code>def</code>。不要在 <code>async def</code> 里混入 <code>time.sleep</code>、同步 <code>requests</code>、CPU 密集循环。这是把高性能 FastAPI 写慢的第一大原因。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>异步、性能测量、外部调用超时和部署层优化参考自“FastAPI 入门到实战”系列第 1、12 篇；本页聚焦最快能落地的性能主干。
     </div>
 
     <div class="page-nav">

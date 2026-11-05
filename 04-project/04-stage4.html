@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="project-stage4">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：阶段三 + 第 5、10 章</span>
       <span class="tag">目标：可上线、可观测、可运维</span>
+      <span class="tag optional">上线前加固</span>
     </div>
 
     <div class="objectives">
@@ -69,7 +71,7 @@
     <p>用 <code>pydantic-settings</code> 从环境变量读取配置，避免硬编码：</p>
     <div class="code-block">
       <div class="code-header"><span>config.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from pydantic_settings import BaseSettings
+      <pre><code class="language-python">from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -77,13 +79,15 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret"
     access_token_expire_minutes: int = 30
 
-    class Config:
-        env_file = ".env"   # 自动读取 .env 文件
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
 
 settings = Settings()</code></pre>
     </div>
-    <p>依赖版本：<code>pydantic-settings==2.2.1</code>。</p>
+    <p>生产环境不要给 <code>secret_key</code> 提供可用默认值。开发环境的默认值最多只能帮助本地启动，部署时应由环境变量或密钥管理服务强制注入。</p>
 
     <h2>2. 限流中间件</h2>
     <div class="code-block">
@@ -168,6 +172,42 @@ jobs:
       - run: pytest</code></pre>
     </div>
 
+    <h2>6. 最小测试闭环</h2>
+    <p>测试的目的不是追求覆盖率数字，而是在修改时快速发现“认证、事务和数据归属”被破坏。先用 <code>TestClient</code> 覆盖高价值路径：</p>
+    <div class="code-block">
+      <div class="code-header"><span>tests/test_auth_boundary.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from fastapi.testclient import TestClient
+from app.main import app
+from app.api.deps import get_current_user
+
+client = TestClient(app)
+
+
+def fake_user():
+    return {"id": 1, "username": "tester", "is_active": True}
+
+
+def test_requires_authentication():
+    response = client.get("/api/v1/todos")
+    assert response.status_code == 401
+
+
+def test_authenticated_user_can_list_own_todos():
+    app.dependency_overrides[get_current_user] = fake_user
+    try:
+        response = client.get("/api/v1/todos")
+        assert response.status_code == 200, response.text
+    finally:
+        app.dependency_overrides.clear()</code></pre>
+    </div>
+
+    <ul>
+      <li>依赖覆盖让测试不必启动真实认证服务；</li>
+      <li>测试数据库使用独立事务，结束后回滚，避免用例互相污染；</li>
+      <li>必须覆盖：未认证 401、参数错误 422、访问他人资源 404、成功创建 201；</li>
+      <li>SQLite 内存库适合日常快速测试，CI 再跑一轮 PostgreSQL 验证方言差异。</li>
+    </ul>
+
     <h2>最终目录结构</h2>
     <div class="code-block">
       <div class="code-header"><span>完整结构</span><button class="copy-btn">复制</button></div>
@@ -197,6 +237,11 @@ requirements.txt
       <p>你已走完从「单文件 Hello World」到「企业级 API 服务」的完整旅程。回顾这条演进路径，你会发现每一阶段都是前一阶段能力的自然延伸——这正是学习 FastAPI 的正确姿势：<strong>小步快跑，逐步扩展</strong>。</p>
     </div>
 
+    <div class="callout info">
+      <div class="callout-title">上线前用主干问题做验收</div>
+      <p>认证失败是否返回 401、越权访问是否返回 404、写操作异常是否回滚、后台任务是否误用请求会话、数据库连接是否耗尽、文档与密钥是否暴露、迁移是否可重复执行。先逐项回答这些问题，再讨论缓存、消息队列和更复杂的可观测性。</p>
+    </div>
+
     <h2>回顾：四个阶段演进总结</h2>
     <table>
       <tr><th>阶段</th><th>核心增量</th><th>对应章节</th></tr>
@@ -211,9 +256,9 @@ requirements.txt
         <div class="dir">上一阶段</div>
         <div class="lbl">← 阶段三 · 认证 + 后台任务</div>
       </a>
-      <a class="next" href="../index.html">
-        <div class="dir">返回</div>
-        <div class="lbl">学习路径总览 →</div>
+      <a class="next" href="05-core-slice.html">
+        <div class="dir">核心路线</div>
+        <div class="lbl">20% 主干业务纵切面 →</div>
       </a>
     </div>
   </main>

@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="assets/css/highlight.css">
 <link rel="stylesheet" href="assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="index">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -18,7 +18,7 @@
   <!-- 侧边栏 -->
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
 
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
@@ -45,6 +45,7 @@
       <a class="toc-item" data-page="project-stage2" href="04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -56,14 +57,21 @@
 
     <div class="tags">
       <span class="tag">FastAPI ≥ 0.110</span>
-      <span class="tag">Python ≥ 3.8（推荐 3.11+）</span>
-      <span class="tag">14 章 + 4 阶段实战</span>
+      <span class="tag">Python ≥ 3.11</span>
+      <span class="tag">15 页 + 4 阶段实战</span>
+      <span class="tag">28 法则主线</span>
       <span class="tag">完全离线</span>
+    </div>
+
+    <div class="callout info">
+      <div class="callout-title">这份教程怎么学最省力</div>
+      <p>不要从第一页平均用力扫到最后一页。先沿着“<strong>请求契约 → 数据模型 → 依赖与会话 → 认证与数据隔离 → 异步任务边界</strong>”打通一个业务闭环，再按真实需求补 WebSocket、文件、任务队列、压测和运维。</p>
     </div>
 
     <div class="objectives">
       <h4>🎯 学完本教程你将能够</h4>
       <ul>
+        <li>识别一个 FastAPI 项目里真正承载核心业务的 20% 模块，并优先掌握它们；</li>
         <li>独立搭建并运行一个 FastAPI 服务，理解请求从进入到响应的完整链路；</li>
         <li>用 Pydantic 模型做请求体校验与数据建模，写出健壮的 API；</li>
         <li>掌握依赖注入、中间件、后台任务、异步编程等进阶能力；</li>
@@ -72,13 +80,81 @@
       </ul>
     </div>
 
+    <h2>28 法则：先吃透 20% 的主干</h2>
+    <p>帕累托法则在这里不是一句口号，而是学习顺序：<strong>一个项目里，少数模块承载大部分业务风险与核心逻辑</strong>。本教程把 FastAPI 工程能力压缩成五段主干，它们合起来足以支撑大多数 CRUD、后台系统、小程序 API 与 AI 服务接口。</p>
+
+    <div class="core-rule">
+      <div class="core-rule-item">
+        <strong>20%</strong>
+        <span>请求契约、Pydantic 边界、依赖注入、数据库事务、认证与异步边界。</span>
+      </div>
+      <div class="core-rule-arrow">→</div>
+      <div class="core-rule-item secondary">
+        <strong>80%</strong>
+        <span>真实业务中的增删改查、身份校验、数据隔离、事务一致性和响应后任务。</span>
+      </div>
+    </div>
+
+    <div class="core-grid">
+      <a class="core-card" href="01-basics/02-path-request.html">
+        <div class="core-index">01</div>
+        <div class="core-title">请求契约</div>
+        <div class="core-desc">路由顺序、参数来源、状态码、响应模型与资源生命周期。</div>
+        <div class="core-meta">第 2–3 章 · 主干必修</div>
+      </a>
+      <a class="core-card" href="02-intermediate/04-dependency.html">
+        <div class="core-index">02</div>
+        <div class="core-title">依赖与会话</div>
+        <div class="core-desc">把认证、数据库会话、配置和请求清理统一成依赖树。</div>
+        <div class="core-meta">第 4、8 章 · 主干必修</div>
+      </a>
+      <a class="core-card" href="03-advanced/09-auth.html">
+        <div class="core-index">03</div>
+        <div class="core-title">认证与数据隔离</div>
+        <div class="core-desc">JWT、当前用户、角色权限、owner_id 查询与 IDOR 防护。</div>
+        <div class="core-meta">第 8–9 章 · 主干必修</div>
+      </a>
+      <a class="core-card" href="02-intermediate/06-background.html">
+        <div class="core-index">04</div>
+        <div class="core-title">异步任务边界</div>
+        <div class="core-desc">区分 async、后台任务和消息队列，避免请求资源泄漏。</div>
+        <div class="core-meta">第 6–7 章 · 主干必修</div>
+      </a>
+      <a class="core-card" href="04-project/05-core-slice.html">
+        <div class="core-index">05</div>
+        <div class="core-title">核心业务纵切面</div>
+        <div class="core-desc">用 Todo 把契约、事务、认证、归属隔离和后台任务连成闭环。</div>
+        <div class="core-meta">完整实战 · 建议优先完成</div>
+      </a>
+      <a class="core-card" href="04-project/04-stage4.html">
+        <div class="core-index">06</div>
+        <div class="core-title">上线验收</div>
+        <div class="core-desc">配置、日志、健康检查、容器和发布流程，服务于主干稳定性。</div>
+        <div class="core-meta">阶段四 · 上线前按需</div>
+      </a>
+    </div>
+
+    <p><strong>建议主干路线：</strong>先学第 1–4 章，再进入数据库、认证和后台任务；完成 <a href="04-project/05-core-slice.html">核心业务纵切面</a> 后，再回头补中间件、WebSocket、部署和四个阶段项目。</p>
+    <div class="route-line">
+      <span class="route-node must">1 基础</span><span class="route-sep">→</span>
+      <span class="route-node must">2–3 契约</span><span class="route-sep">→</span>
+      <span class="route-node must">4 依赖</span><span class="route-sep">→</span>
+      <span class="route-node must">8 数据库</span><span class="route-sep">→</span>
+      <span class="route-node must">9 认证</span><span class="route-sep">→</span>
+      <span class="route-node must">6 后台任务</span><span class="route-sep">→</span>
+      <span class="route-node must">核心纵切面</span><span class="route-sep">→</span>
+      <span class="route-node">5 中间件</span><span class="route-sep">→</span>
+      <span class="route-node">7 异步优化</span><span class="route-sep">→</span>
+      <span class="route-node">10 部署</span>
+    </div>
+
     <h2>学习路径总览</h2>
     <p>教程分为 <strong>四个阶段</strong>，难度逐级递进。每个章节都标注了难度等级与前置知识，建议按顺序学习；有经验的读者也可以直接跳到感兴趣的章节。</p>
 
     <div class="progress-block">
       <div class="progress-label">
         <span>整体学习进度</span>
-        <span id="global-progress-label">0 / 14 章</span>
+        <span id="global-progress-label">0 / 15 章</span>
       </div>
       <div class="progress-track"><div class="progress-fill" id="global-progress-fill"></div></div>
     </div>
@@ -209,12 +285,21 @@
           <div class="c-desc">限流、日志、健康检查、Docker 部署与 CI 流水线。</div>
           <div class="c-tags"><span class="lvl l3">高级</span></div>
         </a>
+        <a class="chapter-card" data-page="core-slice" href="04-project/05-core-slice.html">
+          <div class="c-title">核心路线 · 20% 主干纵切面</div>
+          <div class="c-desc">把请求契约、事务、认证、归属隔离、后台任务和测试串成一个业务闭环。</div>
+          <div class="c-tags"><span class="lvl l3">必修</span><span class="tag core">28 法则</span></div>
+        </a>
       </div>
     </div>
 
     <div class="callout tip">
       <div class="callout-title">💡 使用建议</div>
-      <p>每章末尾都有「动手练习」和「预期输出」，建议边读边敲。页面右下角的按钮可以把章节标记为「已完成」，进度会自动保存在你的浏览器里（localStorage），下次打开依然保留。</p>
+      <p>每章末尾都有「动手练习」和「预期输出」，建议边读边敲。页面右下角的按钮可以把章节标记为「已完成」，进度会自动保存在你的浏览器里（localStorage），下次打开依然保留。若时间有限，先把标记为“主干必修”的页面和核心纵切面完成。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>内容来源说明：</strong>本教程沿用原有课程结构，并参考微信公众号“FastAPI 入门到实战”系列（共 19 篇）对核心机制、工程边界与项目实践进行主题重组、补充和独立改写。可查看 <a href="https://mp.weixin.qq.com/mp/appmsgalbum?action=getalbum&amp;__biz=MjM5Njg0NTgyOQ==&amp;scene=1&amp;album_id=4692141767339737091&amp;count=100" target="_blank" rel="noopener noreferrer">原文专辑</a>；原文版权归原作者。
     </div>
 
     <div class="page-nav">

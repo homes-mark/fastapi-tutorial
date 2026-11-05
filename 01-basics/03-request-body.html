@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="03-request-body">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -62,6 +63,7 @@
         <li>理解 Pydantic 模型的核心作用：校验、转换、序列化；</li>
         <li>掌握声明请求体的方法，以及嵌套模型、可选字段、默认值；</li>
         <li>学会用 <code>Field</code> 添加字段级约束和示例；</li>
+        <li>能拆分创建、更新、内部和公开响应模型，避免字段越界；</li>
         <li>理解请求体校验失败时返回的 422 错误结构。</li>
       </ul>
     </div>
@@ -139,8 +141,7 @@ def create_item(item: Item):
     <p>模型可以嵌套、组合，构建复杂的数据结构：</p>
     <div class="code-block">
       <div class="code-header"><span>main.py</span><button class="copy-btn">复制</button></div>
-      <pre><code class="language-python">from typing import List, Optional
-from pydantic import BaseModel
+      <pre><code class="language-python">from pydantic import BaseModel, Field
 
 
 class Address(BaseModel):
@@ -151,8 +152,8 @@ class Address(BaseModel):
 class User(BaseModel):
     name: str
     age: int
-    tags: List[str] = []            # 字符串列表，默认空列表
-    address: Optional[Address] = None  # 可选的嵌套模型
+    tags: list[str] = Field(default_factory=list)  # 每次实例独立创建
+    address: Address | None = None                  # 可选嵌套模型
 
 
 @app.post("/users/")
@@ -177,14 +178,85 @@ class Product(BaseModel):
       <li><code>gt=0</code> / <code>ge=0</code>：数值范围约束；</li>
       <li><code>min_length</code> / <code>max_length</code>：字符串长度约束；</li>
       <li><code>pattern</code>：正则校验；</li>
-      <li>所有 <code>description</code> 都会出现在 <code>/docs</code> 文档中。</li>
+      <li>所有 <code>description</code> 都会出现在 <code>/docs</code> 文档中；Pydantic v2 用复数 <code>examples=[...]</code> 提供示例。</li>
     </ul>
+
+    <h2>3.5 同一实体的四套模型</h2>
+    <p>真实业务里，“创建用户”“更新用户”“数据库中的用户”“返回给前端的用户”拥有的字段并不相同。最稳妥的做法是按边界拆模型，而不是用一个类贯穿所有场景：</p>
+
+    <div class="code-block">
+      <div class="code-header"><span>schemas/user.py</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">from pydantic import BaseModel, ConfigDict, Field
+
+
+class UserBase(BaseModel):
+    username: str = Field(min_length=3, max_length=20, pattern=r"^[a-zA-Z0-9_]+$")
+    email: str
+
+
+class UserCreate(UserBase):
+    password: str = Field(min_length=8, max_length=64)
+
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=20)
+    email: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+
+class UserPublic(UserBase):
+    id: int
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)</code></pre>
+    </div>
+
+    <table>
+      <tr><th>模型</th><th>用途</th><th>关键约束</th></tr>
+      <tr><td><code>UserCreate</code></td><td>POST 注册</td><td>必须带密码，禁止客户端指定 <code>id</code></td></tr>
+      <tr><td><code>UserUpdate</code></td><td>PATCH 更新</td><td>字段可选，<code>extra="forbid"</code> 防止越权字段</td></tr>
+      <tr><td><code>UserInDB</code></td><td>内部数据库视图</td><td>可包含密码哈希，绝不能直接作为响应模型</td></tr>
+      <tr><td><code>UserPublic</code></td><td>对外响应</td><td>只声明允许暴露的字段；可开启 <code>from_attributes</code></td></tr>
+    </table>
+
+    <p>做局部更新时，用 <code>exclude_unset=True</code> 区分“没传”和“传了默认值”：</p>
+    <div class="code-block">
+      <div class="code-header"><span>PATCH 更新的数据合并</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">@app.patch("/users/{user_id}", response_model=UserPublic)
+def update_user(user_id: int, payload: UserUpdate):
+    user = get_user_or_404(user_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    return user</code></pre>
+    </div>
+
+    <h2>3.6 response_model 是响应白名单</h2>
+    <p>请求模型负责“允许客户端传什么”，响应模型负责“允许服务端返还什么”。两者不是同一件事：</p>
+    <div class="code-block">
+      <div class="code-header"><span>防止敏感字段泄露</span><button class="copy-btn">复制</button></div>
+      <pre><code class="language-python">class UserInDB(UserBase):
+    id: int
+    hashed_password: str
+    is_active: bool = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+@app.get("/users/{user_id}", response_model=UserPublic)
+def get_user(user_id: int):
+    # 即使内部对象包含 hashed_password，
+    # FastAPI 也只按 UserPublic 的字段构造响应。
+    return load_user_from_db(user_id)</code></pre>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">ResponseValidationError 只会在运行时出现</div>
+      <p>如果 <code>response_model</code> 声明的字段在返回对象里不存在，服务启动时通常不报错，只有真实请求触发序列化时才返回 500。修改响应模型后，必须实际调用接口验证，不能只看启动成功。</p>
+    </div>
 
     <div class="relation">
       <strong>🔗 概念关联：</strong>Pydantic 模型是贯穿整个 FastAPI 的核心抽象——第 4 章依赖注入会用它声明依赖的返回值；第 8 章数据库集成会区分「Pydantic Schema」和「SQLAlchemy Model」；第 9 章认证会用模型声明 Token 与用户信息。掌握好本章，后续事半功倍。
     </div>
 
-    <h2>3.5 动手练习</h2>
+    <h2>3.7 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 基础请求体<span class="ex-level">★ 简单</span></div>
@@ -194,7 +266,7 @@ class Product(BaseModel):
 
     <div class="exercise">
       <div class="ex-title">练习 2 · 嵌套模型<span class="ex-level">★★ 中等</span></div>
-      <p>定义 <code>Order</code> 模型，包含 <code>items: List[Item]</code>（嵌套第 3.2 节的 <code>Item</code>），写一个 <code>POST /orders/</code> 返回订单总价。</p>
+      <p>定义 <code>Order</code> 模型，包含 <code>items: list[Item]</code>（嵌套第 3.2 节的 <code>Item</code>），写一个 <code>POST /orders/</code> 返回订单总价。</p>
       <div class="expected"><strong>预期输出：</strong>POST <code>{"items":[{"name":"a","price":10},{"name":"b","price":20}]}</code>，返回总价 <code>30.0</code>。</div>
     </div>
 
@@ -207,6 +279,10 @@ class Product(BaseModel):
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>请求模型、响应模型、数据库模型要<strong>分开定义</strong>，不要复用同一个类。因为三者职责不同（校验输入 / 塑造输出 / 持久化），混用会导致「数据库字段泄露到 API」或「API 字段污染数据库」。这个原则在第 8 章会详细展开。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>本页的模型分层、<code>from_attributes</code>、<code>extra="forbid"</code> 与 PATCH 更新语义参考自“FastAPI 入门到实战”系列第 3、7 篇，并按本教程用户模型重新简化。
     </div>
 
     <div class="page-nav">

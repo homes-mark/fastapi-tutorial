@@ -8,8 +8,8 @@
 <link rel="stylesheet" href="../assets/css/highlight.css">
 <link rel="stylesheet" href="../assets/css/progress.css">
 </head>
-<body data-total-pages="14"
-      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4"
+<body data-total-pages="15"
+      data-page-ids="01-intro,02-path-request,03-request-body,04-dependency,05-middleware,06-background,07-async,08-database,09-auth,10-websocket,project-stage1,project-stage2,project-stage3,project-stage4,core-slice"
       data-current-page="10-websocket">
 
 <div class="top-progress"><div class="bar"></div></div>
@@ -17,7 +17,7 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="brand"><span class="logo">F</span> FastAPI 教程</div>
-    <div class="subtitle">由浅入深 · 14 章 · 含实战项目</div>
+    <div class="subtitle">由浅入深 · 15 页 · 28 法则主线</div>
     <div class="toc-group">
       <div class="toc-group-title"><span class="dot" style="background:#66bb6a"></span> 入门</div>
       <a class="toc-item" data-page="01-intro" href="../01-basics/01-intro.html"><span class="check">✓</span>1. 简介与安装<span class="lvl l1">入门</span></a>
@@ -43,6 +43,7 @@
       <a class="toc-item" data-page="project-stage2" href="../04-project/02-stage2.html"><span class="check">✓</span>阶段二：多模块+数据库<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage3" href="../04-project/03-stage3.html"><span class="check">✓</span>阶段三：认证+后台任务<span class="lvl l3">高级</span></a>
       <a class="toc-item" data-page="project-stage4" href="../04-project/04-stage4.html"><span class="check">✓</span>阶段四：企业级完善<span class="lvl l3">高级</span></a>
+      <a class="toc-item" data-page="core-slice" href="../04-project/05-core-slice.html"><span class="check">✓</span>核心纵切面<span class="lvl l3">必修</span></a>
     </div>
   </nav>
 
@@ -54,6 +55,7 @@
       <span class="tag">难度：高级</span>
       <span class="tag">前置：第 7 章</span>
       <span class="tag">预计：60 分钟</span>
+      <span class="tag optional">按需扩展</span>
     </div>
 
     <div class="objectives">
@@ -163,11 +165,58 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
       <p>生产环境通常还要在前面加<strong>反向代理</strong>（Nginx / Traefik）做 TLS 终止、负载均衡、静态文件。WebSocket 在反向代理下要正确配置 <code>Upgrade</code> 头转发，否则连接会失败。</p>
     </div>
 
+    <h2>10.5 上线前的最小检查表</h2>
+    <p>部署不是“把 Uvicorn 跑起来”这么简单。以下检查项直接决定主干服务是否稳定：</p>
+    <ul class="checklist">
+      <li>所有配置、密钥、数据库 URL 来自环境变量，不把生产密钥提交到仓库；</li>
+      <li>生产关闭 <code>--reload</code>，数据库结构通过 Alembic 迁移而不是启动时 <code>create_all()</code>；</li>
+      <li>公开环境按策略关闭或保护 <code>/docs</code>、<code>/redoc</code>、<code>/openapi.json</code>；</li>
+      <li>worker 数量与数据库连接池相乘后不超过数据库最大连接数；</li>
+      <li>容器通常一个进程一个副本，由编排层扩缩容；不在容器里盲目开大量 worker；</li>
+      <li>在可信代理后使用 <code>--proxy-headers</code>，并限制 <code>--forwarded-allow-ips</code>，不要无条件信任客户端传入的转发头；</li>
+      <li>反向代理正确转发 WebSocket 的 <code>Upgrade</code> 和 <code>Connection</code> 头；</li>
+      <li>提供独立健康检查，日志输出到 stdout，由平台统一收集和轮转；</li>
+      <li>发布前运行测试与迁移检查，发布后验证认证、数据库、后台任务和静态资源。</li>
+    </ul>
+
+    <div class="callout danger">
+      <div class="callout-title">多 worker 不共享内存</div>
+      <p>全局字典、模块级列表、<code>ConnectionManager</code> 和 <code>lru_cache</code> 在每个 worker 中都是一份独立副本。WebSocket 广播、在线用户数、限流计数和临时验证码等状态，多实例部署时必须放 Redis、数据库或专门的消息系统。</p>
+    </div>
+
+    <h2>10.6 按需扩展：文件上传不要相信文件名</h2>
+    <p>文件处理不是所有 API 项目的必修项，但一旦需要上传，就必须同时考虑路径穿越、文件类型伪造、大小限制、权限和存储位置。最危险的做法是直接拼接客户端文件名：</p>
+    <div class="split-grid">
+      <div class="split-panel bad">
+        <h4>危险写法</h4>
+        <pre><code class="language-python">async def save_upload(file):
+    target = UPLOAD_DIR / file.filename
+# 文件名可能是 ../../etc/passwd
+    target.write_bytes(await file.read())</code></pre>
+      </div>
+      <div class="split-panel good">
+        <h4>最低限度的防护</h4>
+        <pre><code class="language-python">suffix = Path(file.filename).suffix.lower()
+storage_name = f"{uuid4().hex}{suffix}"
+target = (UPLOAD_DIR / storage_name).resolve()
+if not target.is_relative_to(UPLOAD_DIR.resolve()):
+    raise HTTPException(400, "非法文件路径")</code></pre>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>不信任文件名和 Content-Type</strong>：它们都由客户端提供；扩展名白名单、内容头检测、图片解码至少组合使用两种；</li>
+      <li><strong>限制大小</strong>：边读边累计字节数，超过上限立即删除临时文件；</li>
+      <li><strong>存储隔离</strong>：上传目录禁止执行脚本；生产优先使用 S3/OSS/COS 等对象存储；</li>
+      <li><strong>下载也要授权</strong>：查询元数据时同时带 <code>owner_id</code>，不要只凭随机的存储文件名放行；</li>
+      <li><strong>大文件不要整块读入内存</strong>：上传分块处理，下载使用 <code>FileResponse</code> 或 <code>StreamingResponse</code>。</li>
+    </ul>
+
     <div class="relation">
       <strong>🔗 概念关联：</strong>本章是整条学习链的「终点」——WebSocket 依赖第 7 章的异步，部署则是把前面所有章节的成果真正跑起来。实战项目阶段四会补齐限流、日志、健康检查、CI/CD 等企业级细节。
     </div>
 
-    <h2>10.5 动手练习</h2>
+    <h2>10.7 动手练习</h2>
 
     <div class="exercise">
       <div class="ex-title">练习 1 · 回显服务<span class="ex-level">★ 简单</span></div>
@@ -190,6 +239,10 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]</code></pre>
     <div class="callout tip">
       <div class="callout-title">💡 最佳实践</div>
       <p>WebSocket 适合「低频长连接、实时推送」；高频消息或需要可靠投递的场景，考虑消息队列（Redis、RabbitMQ）。多实例部署时，连接状态要用 Redis 等共享存储，不能依赖进程内存。</p>
+    </div>
+
+    <div class="source-note">
+      <strong>扩展阅读：</strong>生产配置、连接池、worker、代理边界和文件安全参考自“FastAPI 入门到实战”系列第 12、15、18、19 篇。WebSocket 与文件处理都属于按需扩展能力，只有成为核心需求时才应优先投入。
     </div>
 
     <div class="page-nav">

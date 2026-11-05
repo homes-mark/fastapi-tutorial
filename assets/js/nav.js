@@ -38,7 +38,43 @@
     });
   }
 
+  function initMobileNav() {
+    var sidebar = document.querySelector('.sidebar');
+    var firstGroup = sidebar ? sidebar.querySelector('.toc-group') : null;
+    if (!sidebar || !firstGroup || sidebar.querySelector('.nav-toggle')) return;
+
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'nav-toggle';
+    button.textContent = '展开章节';
+    button.setAttribute('aria-expanded', 'false');
+    sidebar.insertBefore(button, firstGroup);
+
+    function setOpen(open) {
+      sidebar.classList.toggle('nav-open', open);
+      button.setAttribute('aria-expanded', String(open));
+      button.textContent = open ? '收起章节' : '展开章节';
+    }
+
+    button.addEventListener('click', function () {
+      setOpen(!sidebar.classList.contains('nav-open'));
+    });
+
+    sidebar.querySelectorAll('.toc-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        if (window.matchMedia('(max-width: 900px)').matches) setOpen(false);
+      });
+    });
+
+    var media = window.matchMedia('(max-width: 900px)');
+    function handleMediaChange(event) {
+      if (!event.matches) setOpen(false);
+    }
+    if (media.addEventListener) media.addEventListener('change', handleMediaChange);
+  }
+
   function init() {
+    initMobileNav();
     initCopyButtons();
     initActiveToc();
   }
