@@ -1,113 +1,102 @@
-# FastAPI 学习教程 · 28 法则版 Handoff
+# FastAPI 教程维护说明
 
-> 本文件用于会话中断或切换后，让下一会话仅阅读本文件即可无缝接手。
-> 最后更新：2026-11-05 11:00（GMT+8）
+> 供会话中断后接手使用。最后更新：2026-11-06。
 
----
+## 1. 当前状态
 
-## 1. 任务概述
+- 当前教程正文：`FastAPI教程汇总.md`，约 3100 行，15 章，只讲 FastAPI。
+- 已删除旧汇总中的项目速览、28 法则、章节地图、教程站点实现、学习建议、原始内容索引、来源说明和 HTML 页面链接。
+- 每章按「概念 → 可运行代码 → 逐行解释 → 验证方法」组织。
+- 第 13 章是一个完整可运行的 Todo API，包含注册、登录、JWT、数据库、归属过滤和后台任务；测试方法见第 11 章。
+- `README.md` 已同步为新教程说明。
+- 旧版多页面 HTML（`01-basics/`、`02-intermediate/`、`03-advanced/`、`04-project/`、`index.html`、`assets/`）仍保留，但未同步到新内容，不再作为当前教程入口。
 
-**目标**：制作一份关于 FastAPI 的完整、由浅入深的学习教程，以多个互相链接的 HTML 文件呈现，支持完全离线浏览。教程必须体现帕累托学习原则：先抓住承载主要业务逻辑与风险的 20% 主干，再按需扩展边角能力。
+## 2. 文档结构
 
-**当前状态**：✅ **全部完成**。15 个学习页面（10 章 + 4 阶段实战 + 1 个核心业务纵切面）加首页均已生成，共享资源、移动端目录和进度系统就绪，链接与浏览器渲染已校验。
+| 章节 | 内容 |
+| --- | --- |
+| 1 | HTTP 基础、Python 语法补充、uv、第一个应用、自动文档 |
+| 2 | 路由、路径/查询参数、`Query` / `Path`、路由顺序、`APIRouter` |
+| 3 | 请求体与 Pydantic、字段约束、嵌套、模型分层、`response_model` |
+| 4 | 依赖注入、`yield`、依赖缓存、类依赖、路由级依赖、测试替换 |
+| 5 | `HTTPException`、自定义异常、422 结构、状态码 |
+| 6 | 中间件、CORS、请求 ID |
+| 7 | SQL 基础、SQLAlchemy 2.0、`get_db`、CRUD、事务、N+1、Alembic |
+| 8 | 密码哈希、JWT、登录、`get_current_user`、`owner_id` 防越权 |
+| 9 | 事件循环、`def` / `async def`、异步 HTTP 客户端、后台任务 |
+| 10 | WebSocket 回显与广播 |
+| 11 | 测试 |
+| 12 | 部署 |
+| 13 | 完整 Todo API |
+| 14 | 常见报错 |
+| 15 | 一页速查 |
 
----
+## 3. 内容约定
 
-## 2. 已完成内容
+1. **只保留 FastAPI 相关内容。** 不写教程站点实现、学习方法论、框架对比、来源说明和外部文章索引。
+2. **概念必须可落地。** 每个新概念先解释它解决什么问题，再给代码；代码后必须有逐行解释。
+3. **片段要标明前提。** 不能独立运行的代码片段，要说明它建立在前面哪段代码上；完整示例要能直接运行。
+4. **版本基线：** Python 3.11+、FastAPI 最新版、Pydantic 2、SQLAlchemy 2.0、uv。
+5. **安全示例：** 密码只存哈希；JWT 只放 `sub`、`exp`、`type` 等最小声明；响应模型必须过滤密码字段；资源查询必须带 `owner_id`。
+6. **异步写法：** 只有真正异步的 I/O 才用 `async def`；同步库用普通 `def`，由 FastAPI 放入线程池。
 
-### 2.1 交付物清单（全部已生成）
+## 4. 修改后怎么验证
 
-| 文件 | 说明 | 状态 |
-|------|------|------|
-| `index.html` | 学习路径总览 / 首页 | ✅ |
-| `01-basics/01-intro.html` | 第 1 章 简介与安装 | ✅ |
-| `01-basics/02-path-request.html` | 第 2 章 路径与请求处理 | ✅ |
-| `01-basics/03-request-body.html` | 第 3 章 请求体与 Pydantic | ✅ |
-| `02-intermediate/04-dependency.html` | 第 4 章 依赖注入 | ✅ |
-| `02-intermediate/05-middleware.html` | 第 5 章 中间件 | ✅ |
-| `02-intermediate/06-background.html` | 第 6 章 后台任务 | ✅ |
-| `03-advanced/07-async.html` | 第 7 章 异步编程 | ✅ |
-| `03-advanced/08-database.html` | 第 8 章 数据库集成 | ✅ |
-| `03-advanced/09-auth.html` | 第 9 章 认证与授权 | ✅ |
-| `03-advanced/10-websocket.html` | 第 10 章 WebSocket 与部署 | ✅ |
-| `04-project/01-stage1.html` | 实战阶段一 单模块 CRUD | ✅ |
-| `04-project/02-stage2.html` | 实战阶段二 多模块+数据库 | ✅ |
-| `04-project/03-stage3.html` | 实战阶段三 认证+后台任务 | ✅ |
-| `04-project/04-stage4.html` | 实战阶段四 企业级完善 | ✅ |
-| `04-project/05-core-slice.html` | 28 法则核心业务纵切面 | ✅ |
-| `assets/css/style.css` | 全局样式 | ✅ |
-| `assets/css/highlight.css` | 语法高亮配色 | ✅ |
-| `assets/css/progress.css` | 进度条样式 | ✅ |
-| `assets/js/highlight.js` | 自研 Python/JSON/bash 高亮器 | ✅ |
-| `assets/js/nav.js` | 复制按钮、目录高亮 | ✅ |
-| `assets/js/progress.js` | 进度持久化（localStorage） | ✅ |
+### 4.1 检查 Python 代码块语法
 
-### 2.2 已实现的教程要求对照
+~~~bash
+python - <<'EOF'
+import re, pathlib
+text = pathlib.Path("FastAPI教程汇总.md").read_text(encoding="utf-8")
+blocks = re.findall(r"```python\n(.*?)```", text, re.S)
+bad = 0
+for i, b in enumerate(blocks, 1):
+    try:
+        compile(b, f"block{i}", "exec")
+    except SyntaxError as e:
+        bad += 1
+        print("SYNTAX ERROR block", i, e)
+print("blocks:", len(blocks), "bad:", bad)
+EOF
+~~~
 
-1. **学习路径与目标**：首页按 4 阶段（入门/进阶/高级/实战）组织，每章含学习目标、前置知识、难度标签（入门/进阶/高级）、建议顺序。✅
-2. **核心概念**：覆盖路径与请求、Pydantic 校验、依赖注入、中间件、后台任务、async/await、数据库、认证授权、WebSocket 与部署；每章含「概念关联」板块说明概念间关系与演进。✅
-3. **代码示例与练习**：每章含可运行代码 + 由易到难练习（★ 简单 ~ ★★★ 较难）+ 预期输出/验证方法；关键依赖均已标注版本（fastapi 0.110.0、uvicorn 0.29.0、pydantic 2.6.4、sqlalchemy 2.0.29、python-jose 3.3.0、passlib 1.7.4 等）。✅
-4. **误区与最佳实践**：每章含「⚠️ 常见误区/坑」和「💡 最佳实践」callout。✅
-5. **实战项目**：4 阶段递进（单模块 CRUD → 多模块+数据库 → 认证+后台任务 → 企业级完善），每阶段有目标与增量说明。✅
-6. **页面呈现**：侧边栏目录（可跳转）、自研语法高亮、进度条+完成按钮（localStorage 持久化）、完全离线（无 CDN 依赖）。✅
-7. **28 法则**：首页新增主干学习地图、20%/80% 投入说明和推荐路线；第 2、3、4、6、7、8、9 章标记为主干；新增 Todo 业务纵切面，把契约、依赖、事务、认证、数据隔离、后台任务和测试串成闭环。✅
-8. **公众号参考内容**：参考“FastAPI 入门到实战”系列 19 篇，补充框架选型、APIRouter、Pydantic 模型分层、依赖树与覆盖、异常与请求 ID、Celery、异步性能、SQLAlchemy 2.0、现代认证、文件安全、测试与生产实践。✅
-9. **交付物**：本 handoff 文件。✅
+### 4.2 跑通第 13 章完整项目
 
----
+把第 13 章各文件按目录结构写到临时目录，然后：
 
-## 3. 关键设计决策
-
-1. **无外部依赖，完全离线**：语法高亮用自研 JS tokenizer（不引 highlight.js CDN），避免联网失败导致高亮失效。仅支持 `python`、`bash`、`json`、`yaml` 四种语言标记（yaml 目前按纯文本处理）。
-2. **进度持久化**：用 `localStorage` 的 key `fastapi_tutorial_progress`，以「页面文件名（去 .html）」为 ID。当前 `data-total-pages="15"`，`data-page-ids` 包含 15 个学习页。**注意**：若未来增删页面，需同步更新所有 HTML 的这两个属性、侧边栏和首页章节卡片。
-3. **目录结构固定**：侧边栏是全站统一导航（15 项），每个页面都内嵌完整的 `<nav class="sidebar">`。新增/删除章节时必须批量同步所有 HTML；`core-slice` 是新增的核心纵切面 ID。
-4. **浅色主题**：遵循 IDE 浅色主题要求，配色以 FastAPI 品牌绿 `#009688` 为主色。
-5. **页面模板约定**：每页 `data-current-page` 必须是该页文件名（去 .html），用于目录 active 高亮；`<script>` 加载顺序固定为 highlight.js → nav.js → progress.js。
-6. **移动端导航**：`nav.js` 在窄屏注入“展开章节”按钮，CSS 默认折叠目录，避免正文被完整目录推到首屏之外。移动端完成按钮改为文档流布局，避免遮挡正文。
-7. **内容来源**：新增内容参考微信文章专辑“FastAPI 入门到实战”，但页面结构、中文叙述和示例均按本教程上下文重写。引用说明已放在首页、README 和相关章节末尾。
-
----
-
-## 4. 进行中 / 待办事项
-
-**无阻塞项。** 以下为可选的后续增强（非必需，按需决定是否继续）：
-
-- [ ] 可考虑把侧边栏抽成 JS 模板（用一个 `sidebar.js` 动态生成），消除 16 处重复。当前结构可用，只是维护成本略高。
-- [ ] 可补充一个基于核心纵切面的自测题 / 复习卡片页面。
-- [ ] 可增加打印样式优化（当前已有基础 `@media print`）。
-- [ ] 若教程需要更多语言高亮（如 `toml`、`ini`），需扩展 `assets/js/highlight.js`。
-
----
-
-## 5. 目录结构（当前实际）
-
-```
-fastapi-tutorial/
-├── index.html
-├── HANDOFF.md              # 本文件
-├── assets/
-│   ├── css/{style,highlight,progress}.css
-│   └── js/{highlight,nav,progress}.js
-├── 01-basics/  {01-intro,02-path-request,03-request-body}.html
-├── 02-intermediate/ {04-dependency,05-middleware,06-background}.html
-├── 03-advanced/ {07-async,08-database,09-auth,10-websocket}.html
-└── 04-project/ {01-stage1,02-stage2,03-stage3,04-stage4,05-core-slice}.html
+```bash
+uv venv
+uv pip install "fastapi[standard]" sqlalchemy "pwdlib[argon2]" PyJWT python-multipart pydantic-settings
 ```
 
----
+用 `TestClient` 验证以下流程：
 
-## 6. 下一步计划（如继续工作）
+1. 注册返回 201，响应中不含 `hashed_password`；
+2. 登录返回 200，拿到 `access_token`；
+3. 不带 token 访问 `/todos` 返回 401；
+4. 创建 Todo 返回 201；
+5. 列表只返回当前用户的数据；
+6. 另一个用户访问该 `todo_id` 返回 404；
+7. PATCH 只传 `{"done": true}`，标题保持不变；
+8. 空标题返回 422；
+9. 删除返回 204；
+10. `/openapi.json` 能正常生成。
 
-1. 若用户反馈某章内容偏薄/偏深，直接编辑对应 HTML 文件（用 Edit 工具，注意侧边栏无需改动）。
-2. 若需新增章节：新建 HTML → 复制任一页面做模板 → 改 `data-current-page`、正文、`page-nav` 前后链接 → 在**所有页面**侧边栏加一项 → 更新所有页面 `data-page-ids` 和 `data-total-pages`。
-3. 修改后至少运行：本地链接检查、HTML 结构检查、`node --check assets/js/*.js`，并用桌面/移动视口截图确认首页和核心纵切面排版。
-4. 交付方式：直接打开 `index.html`。
+### 4.3 检查 Markdown 结构
 
----
+- 代码围栏数量为偶数；
+- 标题层级连续；
+- 不残留 `28 法则`、`来源说明`、`原始页面`、`学习目标` 等旧模板文字。
 
-## 7. 环境与约定
+## 5. 已知限制
 
-- 工作目录：`D:/AAAJob/NoteJob/fastapi-tutorial/`
-- 编码：所有 HTML 为 UTF-8，`lang="zh-CN"`。
-- 引号规范：HTML 属性用 ASCII 双引号；正文中文用中文标点。
-- 相对路径：子目录页面引用共享资源用 `../assets/...`，跨目录跳转用 `../01-basics/...` 等。
+- 第 13 章使用同步 SQLAlchemy + SQLite，方便本地运行；高并发或异步数据库方案见第 7 章。
+- 旧版 HTML 页面未同步。若以后要恢复多页面站点，需要从当前 Markdown 重新生成，而不是继续修改旧 HTML。
+- 部署章节只给出最小可用配置，未覆盖 Kubernetes、CI/CD、监控和日志平台等完整运维体系。
+
+## 6. 后续可做
+
+- [ ] 为第 13 章补一份可直接运行的 `tests/` 目录。
+- [ ] 增加 Alembic 的完整初始化示例（当前只有命令和说明）。
+- [ ] 补充异步 SQLAlchemy 的完整 CRUD 示例。
+- [ ] 如果确定放弃旧版 HTML，删除 `01-basics/`、`02-intermediate/`、`03-advanced/`、`04-project/`、`index.html` 和 `assets/`，避免两个版本并存。
